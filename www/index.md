@@ -3,7 +3,7 @@
 This is a collection of utility functions to build applications in
 [Go](https://go.dev/).
 
-* [iter](/dir?ci=tip&name=extkey): additional functions to combine iterators.
+* [iter](/dir?ci=tip&name=iter): additional functions to combine iterators.
 
 ## Use instructions
 
