@@ -1,3 +1,3 @@
-module t73f.de/r/std
+module t73f.de/r/app
 
 go 1.23

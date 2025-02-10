@@ -1,9 +1,9 @@
 //-----------------------------------------------------------------------------
 // Copyright (c) 2025-present Detlef Stern
 //
-// This file is part of std.
+// This file is part of App.
 //
-// std is licensed under the latest version of the EUPL (European Union Public
+// App is licensed under the latest version of the EUPL (European Union Public
 // License). Please see file LICENSE.txt for your rights and obligations under
 // this license.
 //
@@ -77,7 +77,7 @@ func CountSeq() iter.Seq[int] {
 // TakeSeq returns an iterator that only has a maximum number of elements.
 func TakeSeq[V any](num int, seq iter.Seq[V]) iter.Seq[V] {
 	if num <= 0 {
-		return func(yield func(V) bool) {}
+		return func(func(V) bool) {}
 	}
 	return func(yield func(V) bool) {
 		cur := 0

@@ -1,9 +1,10 @@
-# std - Utilities for Go applications
+# App - Utilities for Go applications
 
 This is a collection of utility functions to build applications in
 [Go](https://go.dev/).
 
 * [iter](/dir?ci=tip&name=iter): additional functions to combine iterators.
+* [set](/dir?ci=tip&name=set): a simple set type.
 
 ## Use instructions
 
@@ -20,7 +21,7 @@ it is in your search path for commands.
 How you can execute the following Go command to retrieve a given version of
 this library:
 
-    GOVCS=t73f.de:fossil go get t73f.de/r/webs@HASH
+    GOVCS=t73f.de:fossil go get t73f.de/r/app@HASH
 
 where `HASH` is the hash value of the commit you want to use.
 
