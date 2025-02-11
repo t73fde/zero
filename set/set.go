@@ -14,7 +14,11 @@
 // Package set provides a simple set type.
 package set
 
-import "iter"
+import (
+	"fmt"
+	"iter"
+	"strings"
+)
 
 // Set is an unordered collection of non-duplicate elements.
 type Set[E comparable] struct {
@@ -28,6 +32,24 @@ func New[E comparable](elems ...E) *Set[E] {
 		m[elem] = struct{}{}
 	}
 	return &Set[E]{m}
+}
+
+// String returns a string representation.
+func (s *Set[E]) String() string {
+	var sb strings.Builder
+	sb.WriteByte('{')
+	if s != nil && s.m != nil {
+		comma := false
+		for elem := range s.m {
+			if comma {
+				sb.WriteString(", ")
+			}
+			comma = true
+			sb.WriteString(fmt.Sprintf("%v", elem))
+		}
+	}
+	sb.WriteByte('}')
+	return sb.String()
 }
 
 // Add an elements to the set.
@@ -44,6 +66,14 @@ func (s *Set[E]) Contains(elem E) bool {
 		return ok
 	}
 	return false
+}
+
+// Length returns the number of elements in the set.
+func (s *Set[E]) Length() int {
+	if s != nil {
+		return len(s.m)
+	}
+	return 0
 }
 
 // Values returns an iterator of all elements of the set.
