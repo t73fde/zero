@@ -2,7 +2,7 @@ Copyright (c) 2024-present Detlef Stern
 
                           Licensed under the EUPL
 
-App is licensed under the European Union Public License, version 1.2
+Zero is licensed under the European Union Public License, version 1.2
 or later (EUPL v. 1.2). The license is available in the official
 languages of the EU. The English version is included here. Please see
 https://joinup.ec.europa.eu/community/eupl/og_page/eupl for official

@@ -1,3 +1,3 @@
-module t73f.de/r/app
+module t73f.de/r/zero
 
-go 1.23
+go 1.24

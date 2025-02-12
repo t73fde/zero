@@ -1,30 +1,34 @@
-# App - Utilities for Go applications
+# Zero - Utilities for Go applications
 
-This is a collection of utility functions to build applications in
+This is a collection of utility functions for building applications in
 [Go](https://go.dev/).
 
-* [iter](/dir?ci=tip&name=iter): additional functions to combine iterators.
-* [set](/dir?ci=tip&name=set): a simple set type.
+* [iter](/dir?ci=tip&name=iter): Additional functions for combining iterators.
+* [set](/dir?ci=tip&name=set): A simple set type.
 
-## Use instructions
+The name _Zero_ refers to "0-components", introduced in the book
+_Moderne Software-Architektur: Umsichtig planen, robust bauen mit Quasar_ by
+Johannes Siedersleben (2002). 0-components are independent of both application
+and technology, much like blood type O, which can be universally transfused.
 
-If you want to import this library into your own [Go](https://go.dev/)
-software, you must execute a `go get` command. Since Go treats non-standard
-software and non-standard platforms quite badly, you must use some non-standard
-commands.
+## Usage instructions
 
-First, you must install the version control system
-[Fossil](https://fossil-scm.org), which is a superior solution compared to Git,
-in too many use cases. It is just a single executable, nothing more. Make sure,
-it is in your search path for commands.
+To import this library into your own [Go](https://go.dev/) software, you need
+to run the `go get` command. Since Go does not handle non-standard software and
+platforms well, some additional steps are required.
 
-How you can execute the following Go command to retrieve a given version of
+First, install the version control system [Fossil](https://fossil-scm.org),
+which is a superior alternative to Git in many use cases. Fossil is just a
+single executable, nothing more. Make sure it is included in your system's
+command search path.
+
+Then, run the following Go command to retrieve a specific version of
 this library:
 
-    GOVCS=t73f.de:fossil go get t73f.de/r/app@HASH
+    GOVCS=t73f.de:fossil go get t73f.de/r/zero@HASH
 
-where `HASH` is the hash value of the commit you want to use.
+Here, `HASH` represents the commit hash of the version you want to use.
 
-Go currently seems not to support software versions when the software is
-managed by Fossil. This explains the need for the hash value. However, this
-methods works.
+Go currently does not seem to support software versioning for projects managed
+by Fossil. This is why the hash value is required. However, this method works
+reliably.

@@ -1,9 +1,9 @@
 //-----------------------------------------------------------------------------
 // Copyright (c) 2025-present Detlef Stern
 //
-// This file is part of App.
+// This file is part of Zero.
 //
-// App is licensed under the latest version of the EUPL (European Union Public
+// Zero is licensed under the latest version of the EUPL (European Union Public
 // License). Please see file LICENSE.txt for your rights and obligations under
 // this license.
 //
@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	"t73f.de/r/app/set"
+	"t73f.de/r/zero/set"
 )
 
 func TestNewHas(t *testing.T) {
