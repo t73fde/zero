@@ -8,7 +8,7 @@ This is a collection of utility functions for building applications in
 
 The name _Zero_ refers to "0-components", introduced in the book
 _Moderne Software-Architektur: Umsichtig planen, robust bauen mit Quasar_ by
-Johannes Siedersleben (2002). 0-components are independent of both application
+Johannes Siedersleben (2004). 0-components are independent of both application
 and technology, much like blood type O, which can be universally transfused.
 
 ## Usage instructions
