@@ -19,6 +19,9 @@ import (
 	"math"
 )
 
+// EmptySeq returns an empty iterator.
+func EmptySeq[V any]() iter.Seq[V] { return func(func(V) bool) {} }
+
 // CatSeq returns an iterator that is the concatenation of all given iterators.
 func CatSeq[V any](seqs ...iter.Seq[V]) iter.Seq[V] {
 	return func(yield func(V) bool) {
