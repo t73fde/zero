@@ -68,7 +68,7 @@ func ReduceSeq[V, W any](seq iter.Seq[V], init W, op func(W, V) W) W {
 func CountSeq() iter.Seq[int] {
 	const maxMinusOne = math.MaxInt - 1
 	return func(yield func(int) bool) {
-		for i := 0; i < maxMinusOne; i++ {
+		for i := range maxMinusOne {
 			if !yield(i) {
 				return
 			}
