@@ -3,6 +3,7 @@
 This is a collection of utility functions for building applications in
 [Go](https://go.dev/).
 
+* [graph](/dir?ci=tip&name=graph): A simple directed graph.
 * [iter](/dir?ci=tip&name=iter): Additional functions for combining iterators.
 * [set](/dir?ci=tip&name=set): A simple set type.
 

@@ -97,6 +97,37 @@ func (s *Set[E]) Remove(elem E) *Set[E] {
 	return s
 }
 
+// Equal returns true if both sets contain the same elements.
+func (s *Set[E]) Equal(other *Set[E]) bool {
+	if s == nil {
+		return other == nil || len(other.m) == 0
+	}
+	if other == nil {
+		return len(s.m) == 0
+	}
+	if len(s.m) != len(other.m) {
+		return false
+	}
+	for elem := range s.m {
+		if _, found := other.m[elem]; !found {
+			return false
+		}
+	}
+	return true
+}
+
+// Clone returns a full copy of the set.
+func (s *Set[E]) Clone() *Set[E] {
+	if s == nil || len(s.m) == 0 {
+		return nil
+	}
+	m := make(map[E]struct{}, len(s.m))
+	for elem := range s.m {
+		m[elem] = struct{}{}
+	}
+	return &Set[E]{m}
+}
+
 // ensure a valid zero value.
 func (s *Set[E]) ensure() *Set[E] {
 	if s == nil {
