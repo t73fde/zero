@@ -6,6 +6,7 @@ This is a collection of utility functions for building applications in
 * [graph](/dir?ci=tip&name=graph): A simple directed graph.
 * [iter](/dir?ci=tip&name=iter): Additional functions for combining iterators.
 * [set](/dir?ci=tip&name=set): A simple set type.
+* [snow](/dir?ci=tip&name=snow): A key generator.
 
 The name _Zero_ refers to "0-components", introduced in the book
 _Moderne Software-Architektur: Umsichtig planen, robust bauen mit Quasar_ by
