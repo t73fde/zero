@@ -19,6 +19,16 @@ import (
 	"math"
 )
 
+// ----- Notes
+//
+// DeduplicateSeq(Seq[comparable]) Seq[comparable]
+//    Removes duplicates in the sequence
+//
+// MapFilterSeq(Seq[V], func(V) (W, bool)) Seq[W]
+//    returns only those, where bool=true
+//
+// -----
+
 // EmptySeq returns an empty iterator.
 func EmptySeq[V any]() iter.Seq[V] { return func(func(V) bool) {} }
 
