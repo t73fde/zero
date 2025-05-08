@@ -27,6 +27,32 @@ func createDigraph(pairs zps) (dg graph.Digraph[int]) {
 	return dg.AddEgdes(pairs)
 }
 
+func TestDigraphEqual(t *testing.T) {
+	testcases := []struct {
+		name     string
+		empty    bool
+		dg1, dg2 graph.EdgeSlice[int]
+	}{
+		{"both empty", true, nil, nil},
+		{"one empty", false, nil, zps{{1, 2}}},
+		{"reverse", false, zps{{2, 1}}, zps{{1, 2}}},
+		{"seq", true, zps{{1, 2}, {3, 4}}, zps{{3, 4}, {1, 2}}},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			dg1, dg2 := createDigraph(tc.dg1), createDigraph(tc.dg2)
+			if dg1.Equal(dg2) != tc.empty {
+				t.Error(tc.dg1, "<=", tc.empty, "=>", tc.dg2)
+				return
+			}
+			if dg2.Equal(dg1) != tc.empty {
+				t.Error(tc.dg2, "<=", tc.empty, "=>", tc.dg1)
+				return
+			}
+		})
+	}
+}
+
 func TestDigraphOriginators(t *testing.T) {
 	t.Parallel()
 	testcases := []struct {
