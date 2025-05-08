@@ -53,6 +53,27 @@ func TestDigraphEqual(t *testing.T) {
 	}
 }
 
+func TestDigraphHasVertex(t *testing.T) {
+	var dg graph.Digraph[int]
+
+	for i := range 10 {
+		if dg.HasVertex(i) {
+			t.Error("nil digraph has vertex:", i)
+		}
+	}
+	dg = createDigraph(zps{{0, 6}, {1, 2}, {2, 3}, {4, 5}})
+	for i := range 7 {
+		if !dg.HasVertex(i) {
+			t.Error("digraph should have vertex:", i)
+		}
+	}
+	for i := range 7 {
+		if dg.HasVertex(i + 7) {
+			t.Error("digraph must not have vertex:", i+7)
+		}
+	}
+}
+
 func TestDigraphOriginators(t *testing.T) {
 	t.Parallel()
 	testcases := []struct {
