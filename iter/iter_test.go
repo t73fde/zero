@@ -131,6 +131,17 @@ func TestMapReduce(t *testing.T) {
 	}
 }
 
+func TestDeduplicateSeq(t *testing.T) {
+	lastNum := -1
+	for num := range zeroiter.DeduplicateSeq(slices.Values([]int{0, 1, 0, 1, 2, 0, 1, 2, 3, 0, 1, 2, 3, 4, 0})) {
+		if num != lastNum+1 {
+			t.Error("unexpected num:", num, ", after: ", lastNum)
+			break
+		}
+		lastNum = num
+	}
+}
+
 func TestTakeSeq(t *testing.T) {
 	if exp, got := []int{}, slices.Collect(zeroiter.TakeSeq(0, zeroiter.CountSeq())); !slices.Equal(exp, got) {
 		t.Error(exp, got)

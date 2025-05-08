@@ -17,14 +17,9 @@ package iter
 import (
 	"iter"
 	"math"
-)
 
-// ----- Notes
-//
-// DeduplicateSeq(Seq[comparable]) Seq[comparable]
-//    Removes duplicates in the sequence
-//
-// -----
+	"t73f.de/r/zero/set"
+)
 
 // EmptySeq returns an empty iterator.
 func EmptySeq[V any]() iter.Seq[V] { return func(func(V) bool) {} }
@@ -82,6 +77,23 @@ func ReduceSeq[V, W any](seq iter.Seq[V], init W, op func(W, V) W) W {
 		cur = op(cur, elem)
 	}
 	return cur
+}
+
+// DeduplicateSeq returns an iterator with all duplicate values from
+// the original interator removed.
+func DeduplicateSeq[V comparable](seq iter.Seq[V]) iter.Seq[V] {
+	return func(yield func(V) bool) {
+		s := set.New[V]()
+		for elem := range seq {
+			if s.Contains(elem) {
+				continue
+			}
+			s = s.Add(elem)
+			if !yield(elem) {
+				return
+			}
+		}
+	}
 }
 
 // CountSeq returns an iterator that counts, starting with 0.
