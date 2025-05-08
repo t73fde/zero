@@ -22,6 +22,16 @@ import (
 	zeroiter "t73f.de/r/zero/iter"
 )
 
+func TestEmptySeq(t *testing.T) {
+	count := 0
+	for i := range zeroiter.EmptySeq[int]() {
+		count += count + i + 1
+	}
+	if count > 0 {
+		t.Error("EmptySeq is not empty: ", count)
+	}
+}
+
 func TestCatSeq(t *testing.T) {
 	if exp, got := []int{}, slices.Collect(zeroiter.CatSeq[int]()); !slices.Equal(exp, got) {
 		t.Error(got)
