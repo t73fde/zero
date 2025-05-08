@@ -24,9 +24,6 @@ import (
 // DeduplicateSeq(Seq[comparable]) Seq[comparable]
 //    Removes duplicates in the sequence
 //
-// MapFilterSeq(Seq[V], func(V) (W, bool)) Seq[W]
-//    returns only those, where bool=true
-//
 // -----
 
 // EmptySeq returns an empty iterator.
@@ -59,6 +56,19 @@ func FilterSeq[V any](seq iter.Seq[V], pred func(V) bool) iter.Seq[V] {
 	return func(yield func(V) bool) {
 		for elem := range seq {
 			if pred(elem) && !yield(elem) {
+				return
+			}
+		}
+	}
+}
+
+// MapFilterSeq applies a function for each element of an iterator. If the
+// function returns a false value, it is ignored, otherwise the mapped value
+// is added to the resulting iterator.
+func MapFilterSeq[V, W any](seq iter.Seq[V], predfn func(V) (W, bool)) iter.Seq[W] {
+	return func(yield func(W) bool) {
+		for elem := range seq {
+			if e, ok := predfn(elem); ok && !yield(e) {
 				return
 			}
 		}

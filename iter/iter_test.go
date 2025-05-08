@@ -96,6 +96,22 @@ func isPrime(i int) bool {
 	return true
 }
 
+func TestMapFilterSeq(t *testing.T) {
+	exp := []int{0, 6, 12, 18, 24, 30, 36}
+	got := slices.Collect(zeroiter.MapFilterSeq(
+		zeroiter.TakeSeq(20, zeroiter.CountSeq()),
+		func(val int) (int, bool) {
+			if val%3 == 0 {
+				return val * 2, true
+			}
+			return -1, false
+		}),
+	)
+	if !slices.Equal(exp, got) {
+		t.Error(got)
+	}
+}
+
 func TestMapReduce(t *testing.T) {
 	sData := []string{"1", "2", "3", "4", "5", "6"}
 	intSeq := zeroiter.MapSeq(slices.Values(sData), func(s string) int {
