@@ -62,6 +62,30 @@ func TestGenerator(t *testing.T) {
 		lastKey = key
 		checkParse(t, key)
 	}
+
+	t.Run("panic", func(t *testing.T) {
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Error("should panic, but did not")
+			}
+		}()
+		_ = generator.Create(1)
+	})
+}
+
+func TestNewGenerator(t *testing.T) {
+	_ = snow.NewGenerator(0)
+
+	t.Run("panic", func(t *testing.T) {
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Error("should panic, but did not")
+			}
+		}()
+		_ = snow.NewGenerator(32)
+	})
 }
 
 func checkParse(t *testing.T, key snow.Key) {
@@ -94,7 +118,7 @@ func TestKeyID(t *testing.T) {
 
 func TestKeyID2(t *testing.T) {
 	var key snow.Key
-	if key.IsValid() {
+	if key.IsValid() || !key.IsInvalid() {
 		t.Errorf("key %v/%d is not invalid, but should be", key, key)
 	}
 }
@@ -150,5 +174,39 @@ func TestParseKey(t *testing.T) {
 			}
 			checkParse(t, got)
 		})
+	}
+}
+
+func TestMustParse(t *testing.T) {
+	_ = snow.MustParse("0000000000000")
+
+	t.Run("panic", func(t *testing.T) {
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Error("should panic, but did not")
+			}
+		}()
+		_ = snow.MustParse("-1")
+	})
+}
+
+func TestKeySeq(t *testing.T) {
+	generator := snow.NewGenerator(0)
+	key := generator.Create(0)
+	lastTime := key.Time()
+	lastSeqno := generator.KeySeq(key)
+	for range 10000000 {
+		key = generator.Create(0)
+		if key.Time() != lastTime {
+			lastTime = key.Time()
+			lastSeqno = 0
+		}
+		seqno := generator.KeySeq(key)
+		if lastSeqno > 0 && seqno <= lastSeqno {
+			t.Error("sequence number is not increasing:", seqno, ", must be greater than:", lastSeqno)
+			break
+		}
+		lastSeqno = seqno
 	}
 }
