@@ -138,13 +138,13 @@ type Generator struct {
 	appMax  uint       // 1 << appBits (if appBits > 0; else: 0)
 }
 
-// NewGenerator creates a new key generator with a given number of bits for
+// New creates a new key generator with a given number of bits for
 // application use.
-func NewGenerator(appBits uint) Generator {
+func New(appBits uint) *Generator {
 	if appBits > MaxAppBits {
 		panic(fmt.Sprintf("key generator need too many bits (max %d): %v", appBits, MaxAppBits))
 	}
-	return Generator{
+	return &Generator{
 		appBits: appBits,
 		appMax:  1 << appBits,
 	}

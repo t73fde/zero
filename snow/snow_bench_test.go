@@ -27,7 +27,7 @@ func BenchmarkSnowflake(b *testing.B) {
 }
 func BenchmarkSnowflakeX(b *testing.B) {
 	bits := 7
-	generator := snow.NewGenerator(uint(bits))
+	generator := snow.New(uint(bits))
 	key := uint((1 << bits) - 1)
 	for b.Loop() {
 		generator.Create(key)

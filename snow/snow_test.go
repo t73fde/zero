@@ -75,7 +75,7 @@ func TestGenerator(t *testing.T) {
 }
 
 func TestNewGenerator(t *testing.T) {
-	_ = snow.NewGenerator(0)
+	_ = snow.New(0)
 
 	t.Run("panic", func(t *testing.T) {
 		defer func() {
@@ -84,7 +84,7 @@ func TestNewGenerator(t *testing.T) {
 				t.Error("should panic, but did not")
 			}
 		}()
-		_ = snow.NewGenerator(32)
+		_ = snow.New(32)
 	})
 }
 
@@ -102,7 +102,7 @@ func checkParse(t *testing.T, key snow.Key) {
 func TestKeyID(t *testing.T) {
 	for intBits := uint(0); intBits <= snow.MaxAppBits; intBits++ {
 		maxID := int32(1 << intBits)
-		generator := snow.NewGenerator(intBits)
+		generator := snow.New(intBits)
 		if got := generator.MaxAppID(); got+1 != uint(maxID) {
 			t.Errorf("MaxAppID should be %d, but is %d", maxID-1, got)
 		}
@@ -195,7 +195,7 @@ func TestMustParse(t *testing.T) {
 }
 
 func TestKeySeq(t *testing.T) {
-	generator := snow.NewGenerator(0)
+	generator := snow.New(0)
 	key := generator.Create(0)
 	lastTime := key.Time()
 	lastSeqno := generator.KeySeq(key)
