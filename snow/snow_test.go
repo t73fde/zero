@@ -103,6 +103,9 @@ func TestKeyID(t *testing.T) {
 	for intBits := uint(0); intBits <= snow.MaxAppBits; intBits++ {
 		maxID := int32(1 << intBits)
 		generator := snow.NewGenerator(intBits)
+		if got := generator.MaxAppID(); got+1 != uint(maxID) {
+			t.Errorf("MaxAppID should be %d, but is %d", maxID-1, got)
+		}
 		for range 512 {
 			exp := uint(rand.Int31n(maxID))
 			key := generator.Create(exp)

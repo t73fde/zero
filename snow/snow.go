@@ -203,3 +203,6 @@ func (gen *Generator) AppID(key Key) uint {
 func (gen *Generator) KeySeq(key Key) uint {
 	return uint((key & 0x3fffff)) & (1<<(randomBits-gen.appBits) - 1)
 }
+
+// MaxAppID returns the maximum application ID for `gen.Create(appID)`.
+func (gen *Generator) MaxAppID() uint { return gen.appMax - 1 }
