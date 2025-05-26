@@ -25,11 +25,33 @@ func BenchmarkSnowflake(b *testing.B) {
 		generator.Create(0)
 	}
 }
+
 func BenchmarkSnowflakeX(b *testing.B) {
 	bits := 7
 	generator := snow.New(uint(bits))
 	key := uint((1 << bits) - 1)
 	for b.Loop() {
 		generator.Create(key)
+	}
+}
+
+func BenchmarkSnowflakeString(b *testing.B) {
+	var generator snow.Generator
+	for b.Loop() {
+		_ = generator.Create(0).String()
+	}
+}
+
+func BenchmarkSnowflakeFormat(b *testing.B) {
+	var generator snow.Generator
+	for b.Loop() {
+		_ = generator.Create(0).Format(4, "-")
+	}
+}
+
+func BenchmarkSnowflakeFormatNoSep(b *testing.B) {
+	var generator snow.Generator
+	for b.Loop() {
+		_ = generator.Create(0).Format(4, "")
 	}
 }

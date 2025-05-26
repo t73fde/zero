@@ -24,6 +24,7 @@ import (
 )
 
 func TestKeyString(t *testing.T) {
+	t.Parallel()
 	var testcases = []struct {
 		key snow.Key
 		exp string
@@ -49,7 +50,51 @@ func TestKeyString(t *testing.T) {
 	}
 }
 
+func TestKeyFormat(t *testing.T) {
+	t.Parallel()
+	const akey snow.Key = 11939515935325016758
+	var testcases = []struct {
+		name string
+		key  snow.Key
+		size int
+		sep  string
+		exp  string
+	}{
+		{"invalid-unformat", snow.Invalid, 14, "-", "0000000000000"},
+		{"invalid-13", snow.Invalid, 13, "-", "0000000000000"},
+		{"invalid-zero", snow.Invalid, 0, "-", "0-0-0-0-0-0-0-0-0-0-0-0-0"},
+		{"invalid-nosep", snow.Invalid, 2, "", "0000000000000"},
+		{"last-unformat", 0xffffffffffffffff, 14, "-", "FZZZZZZZZZZZZ"},
+		{"alpha-unformat", akey, 14, "-", "ABCDEFGHJKMNP"},
+		{"alpha-4-nosep", akey, 4, "", "ABCDEFGHJKMNP"},
+		{"alpha-1", akey, 1, "-", "A-B-C-D-E-F-G-H-J-K-M-N-P"},
+		{"alpha-2", akey, 2, "-", "A-BC-DE-FG-HJ-KM-NP"},
+		{"alpha-3", akey, 3, "-", "A-BCD-EFG-HJK-MNP"},
+		{"alpha-4", akey, 4, "-", "A-BCDE-FGHJ-KMNP"},
+		{"alpha-5", akey, 5, "-", "ABC-DEFGH-JKMNP"},
+		{"alpha-6", akey, 6, "-", "A-BCDEFG-HJKMNP"},
+		{"alpha-7", akey, 7, "-", "ABCDEF-GHJKMNP"},
+		{"alpha-8", akey, 8, "-", "ABCDE-FGHJKMNP"},
+		{"alpha-9", akey, 9, "-", "ABCD-EFGHJKMNP"},
+		{"alpha-10", akey, 10, "-", "ABC-DEFGHJKMNP"},
+		{"alpha-11", akey, 11, "-", "AB-CDEFGHJKMNP"},
+		{"alpha-12", akey, 12, "-", "A-BCDEFGHJKMNP"},
+		{"alpha-13", akey, 13, "-", "ABCDEFGHJKMNP"},
+		{"alpha-4-nosep", akey, 4, "", "ABCDEFGHJKMNP"},
+		{"alpha-4-duosep", akey, 4, "//", "A//BCDE//FGHJ//KMNP"},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.key.Format(tc.size, tc.sep)
+			if got != tc.exp {
+				t.Errorf("%q expected, but got %q", tc.exp, got)
+			}
+		})
+	}
+}
+
 func TestGenerator(t *testing.T) {
+	t.Parallel()
 	var generator snow.Generator
 	var lastKey snow.Key
 
@@ -75,6 +120,7 @@ func TestGenerator(t *testing.T) {
 }
 
 func TestNewGenerator(t *testing.T) {
+	t.Parallel()
 	_ = snow.New(0)
 
 	t.Run("panic", func(t *testing.T) {
@@ -100,6 +146,7 @@ func checkParse(t *testing.T, key snow.Key) {
 }
 
 func TestKeyID(t *testing.T) {
+	t.Parallel()
 	for intBits := uint(0); intBits <= snow.MaxAppBits; intBits++ {
 		maxID := int32(1 << intBits)
 		generator := snow.New(intBits)
@@ -120,6 +167,7 @@ func TestKeyID(t *testing.T) {
 }
 
 func TestKeyID2(t *testing.T) {
+	t.Parallel()
 	var key snow.Key
 	if key.IsValid() || !key.IsInvalid() {
 		t.Errorf("key %v/%d is not invalid, but should be", key, key)
@@ -127,6 +175,7 @@ func TestKeyID2(t *testing.T) {
 }
 
 func TestParseKey(t *testing.T) {
+	t.Parallel()
 	var testcases = []struct {
 		s   string
 		r   int
@@ -181,6 +230,7 @@ func TestParseKey(t *testing.T) {
 }
 
 func TestMustParse(t *testing.T) {
+	t.Parallel()
 	_ = snow.MustParse("0000000000000")
 
 	t.Run("panic", func(t *testing.T) {
@@ -195,6 +245,7 @@ func TestMustParse(t *testing.T) {
 }
 
 func TestKeySeq(t *testing.T) {
+	t.Parallel()
 	generator := snow.New(0)
 	key := generator.Create(0)
 	lastTime := key.Time()

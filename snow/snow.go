@@ -17,6 +17,7 @@ package snow
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 )
@@ -112,6 +113,84 @@ func (key Key) String() string {
 	if key == 0 {
 		return "0"
 	}
+	temp, tpos := key.reverseEncode()
+
+	var result [13]byte
+	for i := range tpos {
+		result[i] = temp[tpos-i-1]
+	}
+	return string(result[:tpos])
+}
+
+var sepMask = []uint16{
+	0b0000000000000, // 0  = "ABCDEFGHJKMNP" (sentinel)
+	0b0111111111111, // 1  = "A-B-C-D-E-F-G-H-J-K-M-N-P"
+	0b0010101010101, // 2  = "A-BC-DE-FG-HJ-KM-NP"
+	0b0001001001001, // 3  = "A-BCD-EFG-HJK-MNP"
+	0b0000100010001, // 4  = "A-BCDE-FGHJ-KMNP"
+	0b0000010000100, // 5  = "ABC-DEFGH-JKMNP"
+	0b0000001000001, // 6  = "A-BCDEFG-HJKMNP"
+	0b0000000100000, // 7  = "ABCDEF-GHJKMNP"
+	0b0000000010000, // 8  = "ABCDE-FGHJKMNP"
+	0b0000000001000, // 9  = "ABCD-EFGHJKMNP"
+	0b0000000000100, // 10 = "ABC-DEFGHJKMNP"
+	0b0000000000010, // 11 = "AB-CDEFGHJKMNP"
+	0b0000000000001, // 12 = "A-BCDEFGHJKMNP"
+}
+
+// Format returns a string representing the key, where groups of key digits
+// (base-32) are separated by a string. In contrast to String, all digits are
+// returned, even leading zeroes.
+//
+// For example: Invalid.Format(4, "-") == "0-0000-0000-0000".
+//
+// If the separator contains base-32 digit characters, you will not be able to
+// parse the result later.
+//
+// For example: Invalid.Format(4, "3") == "0300003000030000". Parsing it will
+// result in an error (string too long), but you will not be able to shorten
+// is correctly, in the general case.
+//
+// A group size less than one is interpreted as a group size of one. If the
+// spearator is the emptay string, or if group size is greater than 12, no
+// separators are included, returning just the 13 base-32 digits of the key.
+//
+// For example: Invalid.Format(4, "") == "0000000000000", and
+// Invalid.Format(13, "-") == "0000000000000".
+//
+// If you want to parse a formatted key, use the standard library strings
+// package: snow.Parse(strings.Join(strings.Split(key.Format(4, sep), sep), "")).
+func (key Key) Format(groupSize int, sep string) string {
+	if groupSize <= 0 {
+		groupSize = 1
+	}
+	temp, tpos := key.reverseEncode()
+	for ; tpos < len(temp); tpos++ {
+		temp[tpos] = '0'
+	}
+
+	if sep == "" || groupSize >= len(temp) {
+		var result [13]byte
+		for i := range tpos {
+			result[i] = temp[tpos-i-1]
+		}
+		return string(result[:tpos])
+	}
+
+	mask := sepMask[groupSize]
+	var sb strings.Builder
+	for tpos > 0 {
+		tpos--
+		_ = sb.WriteByte(temp[tpos])
+		if mask%2 == 1 {
+			_, _ = sb.WriteString(sep)
+		}
+		mask /= 2
+	}
+	return sb.String()
+}
+
+func (key Key) reverseEncode() ([13]byte, int) {
 	u64 := uint64(key)
 	temp := [13]byte{}
 	tpos := 0
@@ -120,11 +199,7 @@ func (key Key) String() string {
 		tpos++
 		u64 = u64 >> 5
 	}
-	var result [13]byte
-	for i := range tpos {
-		result[i] = temp[tpos-i-1]
-	}
-	return string(result[:tpos])
+	return temp, tpos
 }
 
 const base32chars = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
