@@ -49,7 +49,7 @@ const (
 	timestampBits = 42
 	randomBits    = 22
 
-	maxTimeStamp = 1<<timestampBits - 1
+	maxTimeStamp = int64(1<<timestampBits - 1)
 )
 
 // MaxAppBits states the maximum number of bits reserved for the application
@@ -207,7 +207,7 @@ const base32chars = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 // Generator is a generator for unique keys as int64.
 type Generator struct {
 	mx      sync.Mutex // Protects the next two fields
-	lastTS  uint64     // Last timestamp
+	lastTS  int64      // Last timestamp
 	nextSeq uint64     // Next sequence number for lastTS
 	appBits uint       // number of bits for application use. range: 0-MaxAppBits
 	appMax  uint       // 1 << appBits (if appBits > 0; else: 0)
@@ -229,7 +229,7 @@ func New(appBits uint) *Generator {
 // in 42 bits.
 //
 // Its value is time.Date(2024, time.June, 1, 0, 0, 0, 0, time.UTC).UnixMilli()
-const epochAdjust = 1717200000000
+const epochAdjust int64 = 1717200000000
 
 // Create generates a new key with the given application data.
 func (gen *Generator) Create(appID uint) Key {
@@ -237,7 +237,7 @@ func (gen *Generator) Create(appID uint) Key {
 		panic(fmt.Errorf("application value out of range: %v (max: %v)", appID, gen.appMax))
 	}
 	for {
-		milli := uint64(time.Now().UnixMilli())
+		milli := int64(time.Now().UnixMilli())
 		var seq uint64
 
 		gen.mx.Lock()
@@ -258,7 +258,7 @@ func (gen *Generator) Create(appID uint) Key {
 			}
 
 			// 42bit=ts, kg.intBits=appId, 22-kg.intBits=seq
-			k := (ts << randomBits) | (uint64(appID) << (randomBits - gen.appBits)) | seq
+			k := (uint64(ts) << randomBits) | (uint64(appID) << (randomBits - gen.appBits)) | seq
 			return Key(k)
 		}
 

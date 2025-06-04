@@ -31,6 +31,17 @@ func TestKeyString(t *testing.T) {
 	}{
 		{0, "0"},
 		{1, "1"},
+		{0xfffff, "ZZZZ"},
+		{0xffffff, "FZZZZ"},
+		{0xfffffff, "7ZZZZZ"},
+		{0xffffffff, "3ZZZZZZ"},
+		{0xfffffffff, "1ZZZZZZZ"},
+		{0xffffffffff, "ZZZZZZZZ"},
+		{0xfffffffffff, "FZZZZZZZZ"},
+		{0xffffffffffff, "7ZZZZZZZZZ"},
+		{0xfffffffffffff, "3ZZZZZZZZZZ"},
+		{0xffffffffffffff, "1ZZZZZZZZZZZ"},
+		{0xfffffffffffffff, "ZZZZZZZZZZZZ"},
 		{0xffffffffffffffff, "FZZZZZZZZZZZZ"},
 	}
 	for _, tc := range testcases {
