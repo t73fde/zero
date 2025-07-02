@@ -72,21 +72,31 @@ var (
 	_ io.StringWriter = &File{}
 )
 
-// New creates a new file.
-func New(path string) (*File, error) {
+// SafeWrite creates a new file with the given path.
+func SafeWrite(path string) (*File, error) { return SafeWriteWith(path, "") }
+
+// SafeWriteWith creates a new file with the given path and prefix for the
+// temporary file.
+func SafeWriteWith(path, prefix string) (*File, error) {
 	path = filepath.Clean(path)
 	path, err := filepath.Abs(path)
 	if err != nil {
 		return nil, &fs.PathError{Op: "new", Path: path, Err: err}
 	}
-	dir, fname := filepath.Split(path)
-	if fname == "" || fname == "." || fname == ".." {
+	dir, tmpname := filepath.Split(path)
+	if prefix != "" {
+		tmpname = prefix
+	}
+	if tmpname == "" || tmpname == "." || tmpname == ".." {
 		return nil, &fs.PathError{Op: "new", Path: path, Err: os.ErrInvalid}
 	}
 	if dir == "" {
 		dir = "."
 	}
-	tmpf, err := os.CreateTemp(dir, fname)
+	if prefix != "" {
+		tmpname = prefix
+	}
+	tmpf, err := os.CreateTemp(dir, tmpname)
 	if err != nil {
 		return nil, &fs.PathError{Op: "new", Path: path, Err: err}
 	}

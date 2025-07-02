@@ -23,7 +23,7 @@ import (
 
 func TestHappy(t *testing.T) {
 	const fname = "happy"
-	f, err := New(fname)
+	f, err := SafeWrite(fname)
 	defer f.RollbackIfNeeded()
 	if err != nil {
 		t.Error("new", err)
@@ -55,7 +55,7 @@ func TestCopyWrite(t *testing.T) {
 	}
 
 	const fname = "oso.go.copy"
-	f, err := New(fname)
+	f, err := SafeWrite(fname)
 	defer f.RollbackIfNeeded()
 	if err != nil {
 		t.Error("new", err)
@@ -82,7 +82,7 @@ func TestCopyReadFrom(t *testing.T) {
 	}
 
 	const fname = "oso.go.copy"
-	f, err := New(fname)
+	f, err := SafeWrite(fname)
 	defer f.RollbackIfNeeded()
 	if err != nil {
 		t.Error("new", err)
