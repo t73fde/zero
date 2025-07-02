@@ -30,16 +30,13 @@
 // Use it this way:
 //
 //	func writeData(filename string, data []byte) error {
-//	        f, err := oso.New(filename)
+//	        f, err := oso.SafeWrite(filename)
+//	        if err != nil {
+//	                return err
+//	        }
 //	        defer f.RollbackIfNeeded()
-//	        if err != nil {
-//	                return err
-//	        }
 //
-//	        _, err = f.Write(data)
-//	        if err != nil {
-//	                return err
-//	        }
+//	        _, _ = f.Write(data)
 //	        return f.Close()
 //	}
 //
@@ -57,7 +54,7 @@ import (
 
 // Roughly based on https://github.com/kjk/common/blob/main/atomicfile
 
-// File allows to write content is a safe / atomic matter.
+// File allows to write content in a safe / atomic matter to a file.
 type File struct {
 	path string
 	dir  string
