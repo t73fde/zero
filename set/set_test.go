@@ -24,20 +24,20 @@ import (
 func TestNewHas(t *testing.T) {
 	s := set.New(1, 2, 3, 2)
 	if s.Contains(0) {
-		panic("1")
+		t.Error("0")
 	}
 	if !s.Contains(1) {
-		panic("1")
+		t.Error("1")
 	}
 	if !s.Contains(2) {
-		panic("1")
+		t.Error("2")
 	}
 	if !s.Contains(3) {
-		panic("1")
+		t.Error("3")
 	}
 	vals := slices.Collect(s.Values())
 	if len(vals) != 3 {
-		panic(vals)
+		t.Error(vals)
 	}
 }
 
