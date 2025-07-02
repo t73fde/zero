@@ -5,6 +5,7 @@ This is a collection of utility functions for building applications in
 
 * [graph](/dir?ci=tip&name=graph): A simple directed graph.
 * [iter](/dir?ci=tip&name=iter): Additional functions for combining iterators.
+* [oso](/dir?ci=tip&name=oso): Safe, atomic file writing.
 * [set](/dir?ci=tip&name=set): A simple set type.
 * [snow](/dir?ci=tip&name=snow): A key generator.
 
