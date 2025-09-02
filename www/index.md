@@ -8,6 +8,7 @@ This is a collection of utility functions for building applications in
 * [iter](/dir?ci=tip&name=iter): Additional functions for combining iterators.
 * [oso](/dir?ci=tip&name=oso): Safe, atomic file writing.
 * [set](/dir?ci=tip&name=set): A simple set type.
+* [runes](/dir?ci=tip&name=runes): Unicode code point classification functions.
 * [strings](/dir?ci=tip&name=strings): String functions.
 * [snow](/dir?ci=tip&name=snow): A key generator.
 
