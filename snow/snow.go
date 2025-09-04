@@ -16,6 +16,7 @@
 package snow
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -56,15 +57,18 @@ const (
 // defined part of the key.
 const MaxAppBits = 20
 
-// Parse will parse a string into an external key.
+// Parse will parse a non-empty string into an external key.
 func Parse(s string) (Key, error) {
+	if s == "" {
+		return Invalid, ErrEmptyKey
+	}
 	result := Key(0)
 	for i := range len(s) {
 		ch := s[i]
 		if ch == '-' && i > 0 && i < len(s)-1 {
 			continue
 		}
-		if '0' <= ch && ch <= 128 {
+		if '0' <= ch && ch < 128 {
 			val := decode32map[ch-'0']
 			if 0 <= val && val <= 31 {
 				if result&0xF800000000000000 != 0 {
@@ -78,6 +82,9 @@ func Parse(s string) (Key, error) {
 	}
 	return result, nil
 }
+
+// ErrEmptyKey signals the an empty string was used to parse it into a [Key].
+var ErrEmptyKey = errors.New("empty key")
 
 // MustParse parses the string into an external key, and panics if that is not possible.
 func MustParse(s string) Key {

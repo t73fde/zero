@@ -192,6 +192,7 @@ func TestParseKey(t *testing.T) {
 		r   int
 		exp snow.Key
 	}{
+		{"", 3, 0},
 		{"0000000000000", 0, 0},
 		{"00-000-000-00-000", 0, 0},
 		{"000-000-000-00-00", 0, 0},
@@ -199,6 +200,7 @@ func TestParseKey(t *testing.T) {
 		{"0000000000001", 0, 1},
 		{"0E34NNFRTCQ15", 0, 507945423712181285},
 		{"0DXZBE2D7TB04", 0, 502128752335858692},
+		{"\x80", 1, 0},
 		{"-0000000000000", 1, 0},
 		{"0000000000000-", 1, 0},
 		{"0DXZBE2D7<>04", 1, 0},
@@ -221,6 +223,10 @@ func TestParseKey(t *testing.T) {
 				case 2:
 					if !strings.HasPrefix(err.Error(), "does not fit in uint64: \"") {
 						t.Errorf("error 'string does not fit' expected, but got: %v", err)
+					}
+				case 3:
+					if err != snow.ErrEmptyKey {
+						t.Errorf("error exptected: %v, but got: %v", snow.ErrEmptyKey, err)
 					}
 				default:
 					t.Errorf("unknown result code %d in test case", tc.r)
