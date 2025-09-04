@@ -33,7 +33,7 @@ func BenchmarkSubset(b *testing.B) {
 	for b.Loop() {
 		for _, r := range content {
 			_ = runes.IsScalar(r)
-			_ = runes.IsXmlChar(r)
+			_ = runes.IsXMLChar(r)
 			_ = runes.IsAssignable(r)
 			_ = runes.IsAttributeName(r)
 		}

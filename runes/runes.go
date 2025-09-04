@@ -35,8 +35,8 @@ var scalars = subset{
 	{0xe000, 0x10ffff},
 }
 
-// IsXmlChar tests if the rune is a "XML character", according to RFC9839.
-func IsXmlChar(r rune) bool { return xmlChars.in(r) }
+// IsXMLChar tests if the rune is a "XML character", according to RFC9839.
+func IsXMLChar(r rune) bool { return xmlChars.in(r) }
 
 var xmlChars = subset{
 	{0x20, 0xd7ff},
