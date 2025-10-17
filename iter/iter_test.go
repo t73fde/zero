@@ -32,6 +32,16 @@ func TestEmptySeq(t *testing.T) {
 	}
 }
 
+func TestOneSeq(t *testing.T) {
+	count := 3
+	for i := range zeroiter.OneSeq(5) {
+		count += count + i + 1
+	}
+	if count != 12 {
+		t.Error("OneSeq does not yield just one element: ", count)
+	}
+}
+
 func TestCatSeq(t *testing.T) {
 	if exp, got := []int{}, slices.Collect(zeroiter.CatSeq[int]()); !slices.Equal(exp, got) {
 		t.Error(got)

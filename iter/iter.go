@@ -24,6 +24,13 @@ import (
 // EmptySeq returns an empty iterator.
 func EmptySeq[V any]() iter.Seq[V] { return func(func(V) bool) {} }
 
+// OneSeq returns an iterator that returns just one given element.
+func OneSeq[V any](elem V) iter.Seq[V] {
+	return func(yield func(V) bool) {
+		yield(elem)
+	}
+}
+
 // CatSeq returns an iterator that is the concatenation of all given iterators.
 func CatSeq[V any](seqs ...iter.Seq[V]) iter.Seq[V] {
 	return func(yield func(V) bool) {
