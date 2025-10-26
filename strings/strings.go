@@ -15,6 +15,7 @@
 package strings
 
 import (
+	"iter"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -50,16 +51,19 @@ func JustifyLeft(s string, maxLen int, pad rune) string {
 }
 
 // SplitLines splits the given string into a list of lines.
-func SplitLines(s string) []string {
-	return strings.FieldsFunc(s, func(r rune) bool {
-		return r == '\n' || r == '\r'
-	})
-}
+func SplitLines(s string) []string { return strings.FieldsFunc(s, lineSeparator) }
 
-// MakeWords produces a list of words, i.e. string that were separated by
+// SplitLineSeq returns an iterator over all lines in the given string.
+func SplitLineSeq(s string) iter.Seq[string] { return strings.FieldsFuncSeq(s, lineSeparator) }
+
+func lineSeparator(r rune) bool { return r == '\n' || r == '\r' }
+
+// SplitWords produces a list of words, i.e. string that were separated by
 // control character, space characters, or separator characters.
-func MakeWords(text string) []string {
-	return strings.FieldsFunc(text, func(r rune) bool {
-		return unicode.In(r, unicode.C, unicode.P, unicode.Z)
-	})
-}
+func SplitWords(text string) []string { return strings.FieldsFunc(text, wordSeparator) }
+
+// SplitWordSeq returns an iterator over all words, i.e. string that were separated
+// by control character, space characters, or separator characters.
+func SplitWordSeq(s string) iter.Seq[string] { return strings.FieldsFuncSeq(s, wordSeparator) }
+
+func wordSeparator(r rune) bool { return unicode.In(r, unicode.C, unicode.P, unicode.Z) }

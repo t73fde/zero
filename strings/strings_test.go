@@ -14,6 +14,7 @@
 package strings_test
 
 import (
+	"slices"
 	"testing"
 
 	"t73f.de/r/zero/strings"
@@ -58,7 +59,7 @@ func TestJustifyLeft(t *testing.T) {
 	}
 }
 
-func TestSplitLines(t *testing.T) {
+func TestSplitLinesAndSeq(t *testing.T) {
 	t.Parallel()
 	testcases := []struct {
 		in  string
@@ -72,14 +73,16 @@ func TestSplitLines(t *testing.T) {
 		{"a\n\nb", []string{"a", "b"}},
 	}
 	for i, tc := range testcases {
-		got := strings.SplitLines(tc.in)
-		if !compareStringslice(tc.exp, got) {
+		if got := strings.SplitLines(tc.in); !slices.Equal(tc.exp, got) {
+			t.Errorf("%d/%q: expected %q, got %q", i, tc.in, tc.exp, got)
+		}
+		if got := slices.Collect(strings.SplitLineSeq(tc.in)); !slices.Equal(tc.exp, got) {
 			t.Errorf("%d/%q: expected %q, got %q", i, tc.in, tc.exp, got)
 		}
 	}
 }
 
-func TestMakeWords(t *testing.T) {
+func TestMakeWordsAndSeq(t *testing.T) {
 	t.Parallel()
 	testcases := []struct {
 		in  string
@@ -97,21 +100,11 @@ func TestMakeWords(t *testing.T) {
 		{"a  b", []string{"a", "b"}},
 	}
 	for i, tc := range testcases {
-		got := strings.MakeWords(tc.in)
-		if !compareStringslice(tc.exp, got) {
+		if got := strings.SplitWords(tc.in); !slices.Equal(tc.exp, got) {
+			t.Errorf("%d/%q: expected %q, got %q", i, tc.in, tc.exp, got)
+		}
+		if got := slices.Collect(strings.SplitWordSeq(tc.in)); !slices.Equal(tc.exp, got) {
 			t.Errorf("%d/%q: expected %q, got %q", i, tc.in, tc.exp, got)
 		}
 	}
-}
-
-func compareStringslice(s1, s2 []string) bool {
-	if len(s1) != len(s2) {
-		return false
-	}
-	for i, s := range s1 {
-		if s != s2[i] {
-			return false
-		}
-	}
-	return true
 }
