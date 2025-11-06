@@ -43,15 +43,19 @@ import "testing"
 const benchText = "not a quine, also no quiné";
 `
 
+var dummyS string
+
 func BenchmarkSplitLines(b *testing.B) {
 	for b.Loop() {
-		for range strings.SplitLines(benchLinesText) {
+		for _, s := range strings.SplitLines(benchLinesText) {
+			dummyS = s
 		}
 	}
 }
 func BenchmarkSplitLinesSeq(b *testing.B) {
 	for b.Loop() {
-		for range strings.SplitLineSeq(benchLinesText) {
+		for s := range strings.SplitLineSeq(benchLinesText) {
+			dummyS = s
 		}
 	}
 }
@@ -60,13 +64,15 @@ const benchWordsText = "This, is a text; with some\nstrange runes$$änd ünicüd
 
 func BenchmarkSplitWords(b *testing.B) {
 	for b.Loop() {
-		for range strings.SplitWords(benchWordsText) {
+		for _, s := range strings.SplitWords(benchWordsText) {
+			dummyS = s
 		}
 	}
 }
 func BenchmarkSplitWordSeq(b *testing.B) {
 	for b.Loop() {
-		for range strings.SplitWordSeq(benchWordsText) {
+		for s := range strings.SplitWordSeq(benchWordsText) {
+			dummyS = s
 		}
 	}
 }
