@@ -127,17 +127,17 @@ func (f *File) Close() error {
 	tmpf := f.tmpf
 	f.tmpf = nil
 
+	// Try to do the best by trying to sync and close.
+	errSync := tmpf.Sync()   // First Sync, then Close
+	errClose := tmpf.Close() // Must be done to allow to remove file in rollback
+
 	// Auto-rollback if something happens: delete temp file
 	disableRollback := false
 	defer func() {
 		if !disableRollback {
-			_ = os.Remove(f.tmpf.Name()) // Ignore error, just do your best
+			_ = os.Remove(tmpf.Name()) // Ignore error, just do your best
 		}
 	}()
-
-	// Try to do the best by trying to sync and close.
-	errSync := tmpf.Sync()   // First Sync, then Close
-	errClose := tmpf.Close() // Must be done to allow to remove file in rollback
 
 	if f.err != nil {
 		return f.err
