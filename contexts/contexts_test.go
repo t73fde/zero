@@ -11,13 +11,13 @@
 // SPDX-FileCopyrightText: 2025-present Detlef Stern
 //-----------------------------------------------------------------------------
 
-package context_test
+package contexts_test
 
 import (
 	"context"
 	"testing"
 
-	zerocontext "t73f.de/r/zero/context"
+	zerocontext "t73f.de/r/zero/contexts"
 )
 
 func TestContextValues(t *testing.T) {

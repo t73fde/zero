@@ -11,8 +11,8 @@
 // SPDX-FileCopyrightText: 2025-present Detlef Stern
 //-----------------------------------------------------------------------------
 
-// Package context provides some elements to work easier with storing things in a context.
-package context
+// Package contexts provides some elements to work easier with storing things in a context.
+package contexts
 
 import "context"
 
