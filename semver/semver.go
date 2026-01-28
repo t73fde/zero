@@ -125,6 +125,11 @@ func (v SemVer) Compare(o SemVer) int {
 	})
 }
 
+// Compatible returns true, if the given new version is compatible to the first.
+func (v SemVer) Compatible(n SemVer) bool {
+	return v.Major == n.Major && v.Minor <= n.Minor
+}
+
 // IncPatch increments the patch version.
 func (v *SemVer) IncPatch() {
 	v.Patch++

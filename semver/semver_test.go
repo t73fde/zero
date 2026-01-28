@@ -129,6 +129,32 @@ func TestCompare(t *testing.T) {
 	}
 }
 
+func TestCompatible(t *testing.T) {
+	testcases := []struct {
+		l, r string
+		c    bool
+	}{
+		{"0.0.0", "1.0.0", false},
+		{"2.0.0", "1.0.0", false},
+		{"2.0.0", "2.1.0", true},
+		{"2.1.0", "2.0.0", false},
+		{"2.1.0", "2.1.1", true},
+		{"2.1.1", "2.1.0", true},
+		{"1.0.0-alpha", "1.0.0", true},
+		{"1.0.0-alpha", "1.0.0-alpha.1", true},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.l+"/"+tc.r, func(t *testing.T) {
+			v := semver.MustParse(tc.l)
+			o := semver.MustParse(tc.r)
+			c := v.Compatible(o)
+			if c != tc.c {
+				t.Errorf("%v vs %v should result in %v, but got %v", tc.l, tc.r, tc.c, c)
+			}
+		})
+	}
+}
+
 func TestInc(t *testing.T) {
 	s := "1.4.16-dev+sha"
 
