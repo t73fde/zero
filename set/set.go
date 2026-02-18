@@ -27,11 +27,17 @@ type Set[E comparable] struct {
 
 // New creates a new set with the given elements.
 func New[E comparable](elems ...E) *Set[E] {
-	m := make(map[E]struct{}, min(3, len(elems)))
+	return NewCap(len(elems), elems...)
+}
+
+// NewCap creates a new set of given elements with a specified capacity.
+func NewCap[E comparable](capa int, elems ...E) *Set[E] {
+	m := make(map[E]struct{}, max(3, capa, len(elems)))
 	for _, elem := range elems {
 		m[elem] = struct{}{}
 	}
 	return &Set[E]{m}
+
 }
 
 // String returns a string representation.
@@ -45,7 +51,7 @@ func (s *Set[E]) String() string {
 				sb.WriteString(", ")
 			}
 			comma = true
-			sb.WriteString(fmt.Sprintf("%v", elem))
+			fmt.Fprintf(&sb, "%v", elem)
 		}
 	}
 	sb.WriteByte('}')
