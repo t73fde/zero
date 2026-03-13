@@ -1,4 +1,4 @@
-module t73f.de/r/zero/strings
+module t73f.de/r/zero
 
 go 1.26
 
