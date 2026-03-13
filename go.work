@@ -1,0 +1,13 @@
+go 1.26
+
+use (
+	./contexts
+	./graph
+	./iter
+	./oso
+	./runes
+	./semver
+	./set
+	./snow
+	./strings
+)
