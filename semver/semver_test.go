@@ -14,12 +14,13 @@
 package semver_test
 
 import (
+	"strconv"
 	"testing"
 
 	"t73f.de/r/zero/semver"
 )
 
-var testcases = []struct {
+var generalTestcases = []struct {
 	s string
 	b bool
 	v semver.SemVer
@@ -35,6 +36,7 @@ var testcases = []struct {
 	{"1.2.3-alpha.01", false, semver.SemVer{}},
 	{"1.2.3+", false, semver.SemVer{}},
 
+	{"0.0.0", true, semver.SemVer{}},
 	{"0.0.0", true, semver.SemVer{0, 0, 0, "", ""}},
 
 	{"1.0.0-alpha", true, semver.SemVer{1, 0, 0, "alpha", ""}},
@@ -50,7 +52,7 @@ var testcases = []struct {
 }
 
 func TestParse(t *testing.T) {
-	for _, tc := range testcases {
+	for _, tc := range generalTestcases {
 		t.Run(tc.s, func(t *testing.T) {
 			v, b := semver.Parse(tc.s)
 			if b != tc.b {
@@ -82,7 +84,7 @@ func TestMustParse(t *testing.T) {
 }
 
 func TestString(t *testing.T) {
-	for _, tc := range testcases {
+	for _, tc := range generalTestcases {
 		if !tc.b {
 			continue
 		}
@@ -90,6 +92,23 @@ func TestString(t *testing.T) {
 			v := semver.MustParse(tc.s)
 			if got := v.String(); got != tc.s {
 				t.Errorf("expected %q, but got %q", tc.s, got)
+			}
+		})
+	}
+
+	testcases := []struct {
+		in  semver.SemVer
+		exp string
+	}{
+		{semver.SemVer{}, "0.0.0"},
+		{semver.SemVer{PreRelease: "abc"}, "0.0.0-abc"},
+		{semver.SemVer{Build: "cafebabe.dirty"}, "0.0.0+cafebabe.dirty"},
+		{semver.SemVer{PreRelease: "dev", Build: "c3f113c"}, "0.0.0-dev+c3f113c"},
+	}
+	for i, tc := range testcases {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			if got := tc.in.String(); tc.exp != got {
+				t.Errorf("expected: %q, but got: %q", tc.exp, got)
 			}
 		})
 	}
