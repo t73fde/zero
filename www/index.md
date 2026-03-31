@@ -7,6 +7,7 @@ This is a collection of utility functions for building applications in
 * [graph](/dir?ci=tip&name=graph): A simple directed graph.
 * [iter](/dir?ci=tip&name=iter): Additional functions for combining iterators.
 * [oso](/dir?ci=tip&name=oso): Safe, atomic file writing.
+* [semver](/dir?ci=tip&name=semver): Semantic version data.
 * [set](/dir?ci=tip&name=set): A simple set type.
 * [runes](/dir?ci=tip&name=runes): Unicode code point classification functions.
 * [strings](/dir?ci=tip&name=strings): String functions.
