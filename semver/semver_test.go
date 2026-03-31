@@ -64,6 +64,9 @@ func TestParse(t *testing.T) {
 			if b && v != tc.v {
 				t.Errorf("expected %v, but got %v", tc.v, v)
 			}
+			if pv := semver.MayParse(tc.s); b != (pv != nil) {
+				t.Errorf("semver.MayParse does not match semver.Parse: %v != %v", b, pv)
+			}
 		})
 	}
 }

@@ -59,11 +59,18 @@ func Parse(s string) (SemVer, bool) {
 
 // MustParse parses the string as a semantic version and panics if this is not possible.
 func MustParse(s string) SemVer {
-	v, ok := Parse(s)
-	if !ok {
-		panic(fmt.Sprintf("%q is not a valid SemVer string", s))
+	if v, ok := Parse(s); ok {
+		return v
 	}
-	return v
+	panic(fmt.Sprintf("%q is not a valid SemVer string", s))
+}
+
+// MayParse parses the string as a semantic version and returns nil if this is not possible.
+func MayParse(s string) *SemVer {
+	if v, ok := Parse(s); ok {
+		return &v
+	}
+	return nil
 }
 
 // SemVer stores the parsed data for a semantic version string.
