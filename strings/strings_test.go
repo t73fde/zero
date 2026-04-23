@@ -14,8 +14,10 @@
 package strings_test
 
 import (
+	"fmt"
 	"slices"
 	"testing"
+	"time"
 
 	"t73f.de/r/zero/strings"
 )
@@ -36,6 +38,71 @@ func TestLength(t *testing.T) {
 		}
 	}
 }
+
+func TestAnyToString(t *testing.T) {
+	t.Parallel()
+
+	type S struct{}
+	type MyString string
+
+	var nilTypedPointer *S
+
+	testcases := []struct {
+		name string
+		val  any
+		exp  string
+	}{
+		{"empty string", "", ""},
+		{"int", 1, "1"},
+		{"bool", true, "true"},
+		{"nil interface", nil, "<nil>"},
+		{"typed nil interface", nilTypedPointer, "<nil>"},
+		{"time", time.Date(2020, 1, 2, 3, 4, 5, 0, time.UTC), "2020-01-02 03:04:05 +0000 UTC"},
+		{"alias string", MyString("hello"), "hello"},
+		{"go stringer only", OnlyGoString{V: 42}, "OnlyGoString{V:42}"},
+		{"stringer only", StringerOnly{}, "stringer"},
+		{"go stringer only interface", GoStringerOnly{}, "gostringer"},
+		{"both stringer priority", Both{}, "string"},
+		{"pointer stringer", &PointerStringer{}, "pointer"},
+		{"pointer go stringer", &PointerGoStringer{}, "pointergo"},
+		{"struct fallback", S{}, fmt.Sprint(S{})},
+	}
+
+	for _, tc := range testcases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			got := strings.AnyToString(tc.val)
+			if got != tc.exp {
+				t.Errorf("%s: expected %q, got %q", tc.name, tc.exp, got)
+			}
+		})
+	}
+}
+
+type OnlyGoString struct{ V int }
+
+func (o OnlyGoString) GoString() string { return fmt.Sprintf("OnlyGoString{V:%d}", o.V) }
+
+type Both struct{}
+
+func (Both) String() string   { return "string" }
+func (Both) GoString() string { return "go" }
+
+type StringerOnly struct{}
+
+func (StringerOnly) String() string { return "stringer" }
+
+type GoStringerOnly struct{}
+
+func (GoStringerOnly) GoString() string { return "gostringer" }
+
+type PointerStringer struct{}
+
+func (*PointerStringer) String() string { return "pointer" }
+
+type PointerGoStringer struct{}
+
+func (*PointerGoStringer) GoString() string { return "pointergo" }
 
 func TestJustifyLeft(t *testing.T) {
 	t.Parallel()

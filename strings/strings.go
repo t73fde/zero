@@ -15,6 +15,7 @@
 package strings
 
 import (
+	"fmt"
 	"iter"
 	"strings"
 	"unicode"
@@ -24,6 +25,22 @@ import (
 // Length returns the number of runes in the given string.
 func Length(s string) int {
 	return utf8.RuneCountInString(s)
+}
+
+// AnyToString converts a value of type "any" into a string.
+//
+// In contrast to a simple `fmt.Sprint`, some optimizations are applied.
+func AnyToString(val any) string {
+	if s, isString := val.(string); isString {
+		return s
+	}
+	if s, isStringer := val.(fmt.Stringer); isStringer {
+		return s.String()
+	}
+	if gs, isGoStringer := val.(fmt.GoStringer); isGoStringer {
+		return gs.GoString()
+	}
+	return fmt.Sprint(val)
 }
 
 // JustifyLeft ensures that the string has a defined length.
