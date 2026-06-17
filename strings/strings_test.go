@@ -175,3 +175,54 @@ func TestMakeWordsAndSeq(t *testing.T) {
 		}
 	}
 }
+
+type myString string
+
+func TestJoin(t *testing.T) {
+	testcases := []struct {
+		name  string
+		elems []myString
+		sep   string
+		exp   string
+	}{
+		{
+			name:  "empty",
+			elems: nil,
+			sep:   ",",
+			exp:   "",
+		},
+		{
+			name:  "single",
+			elems: []myString{"utf-8"},
+			sep:   ",",
+			exp:   "utf-8",
+		},
+		{
+			name:  "multiple",
+			elems: []myString{"utf-8", "ascii", "latin1"},
+			sep:   ",",
+			exp:   "utf-8,ascii,latin1",
+		},
+		{
+			name:  "empty separator",
+			elems: []myString{"a", "b", "c"},
+			sep:   "",
+			exp:   "abc",
+		},
+		{
+			name:  "empty element",
+			elems: []myString{"a", "", "c"},
+			sep:   ":",
+			exp:   "a::c",
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := strings.Join(tc.elems, tc.sep)
+			if got != tc.exp {
+				t.Errorf("Join(%v, %q) = %q, want %q", tc.elems, tc.sep, got, tc.exp)
+			}
+		})
+	}
+}

@@ -84,3 +84,29 @@ func SplitWords(text string) []string { return strings.FieldsFunc(text, wordSepa
 func SplitWordSeq(s string) iter.Seq[string] { return strings.FieldsFuncSeq(s, wordSeparator) }
 
 func wordSeparator(r rune) bool { return unicode.In(r, unicode.C, unicode.P, unicode.Z) }
+
+// Join returns the elements of elems concatenated with sep between them.
+func Join[S ~[]E, E ~string](elems S, sep string) string {
+	switch len(elems) {
+	case 0:
+		return ""
+	case 1:
+		return string(elems[0])
+	}
+
+	n := (len(elems) - 1) * len(sep)
+	for _, e := range elems {
+		n += len(e)
+	}
+
+	var b strings.Builder
+	b.Grow(n)
+
+	b.WriteString(string(elems[0]))
+	for _, e := range elems[1:] {
+		b.WriteString(sep)
+		b.WriteString(string(e))
+	}
+
+	return b.String()
+}
