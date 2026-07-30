@@ -34,15 +34,25 @@ import (
 	"strings"
 )
 
-var reSemVer = regexp.MustCompile(
-	`^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$`)
+const (
+	rexsNumber     = `(0|[1-9]\d*)`
+	rexsPreRelease = `((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)`
+	rexsBuild      = `([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*)`
+)
+
+var (
+	reSemVer = regexp.MustCompile(`^` + rexsNumber + `\.` + rexsNumber + `\.` + rexsNumber +
+		`(?:-` + rexsPreRelease + `)?(?:\+` + rexsBuild + `)?$`)
+	rePreRelease = regexp.MustCompile(`^` + rexsPreRelease + `?$`)
+	reBuild      = regexp.MustCompile(`^` + rexsBuild + `?$`)
+)
 
 // Parse a string as a semantic version string.
 func Parse(s string) (SemVer, bool) {
 	if m := reSemVer.FindStringSubmatch(s); len(m) > 0 {
-		if major, errMajor := strconv.ParseUint(m[1], 10, 64); errMajor == nil {
-			if minor, errMinor := strconv.ParseUint(m[2], 10, 64); errMinor == nil {
-				if patch, errPatch := strconv.ParseUint(m[3], 10, 64); errPatch == nil {
+		if major, errMajor := strconv.Atoi(m[1]); errMajor == nil {
+			if minor, errMinor := strconv.Atoi(m[2]); errMinor == nil {
+				if patch, errPatch := strconv.Atoi(m[3]); errPatch == nil {
 					return SemVer{
 						Major:      major,
 						Minor:      minor,
@@ -75,21 +85,28 @@ func MayParse(s string) *SemVer {
 
 // SemVer stores the parsed data for a semantic version string.
 type SemVer struct {
-	Major      uint64
-	Minor      uint64
-	Patch      uint64
+	Major      int
+	Minor      int
+	Patch      int
 	PreRelease string
 	Build      string
+}
+
+// IsValid returns true, if the version contains valid data.
+func (v SemVer) IsValid() bool {
+	return v.Major >= 0 && v.Minor >= 0 && v.Patch >= 0 &&
+		rePreRelease.MatchString(v.PreRelease) &&
+		reBuild.MatchString(v.Build)
 }
 
 // String returns a string representation of the semantic version.
 func (v SemVer) String() string {
 	var sb strings.Builder
-	sb.WriteString(strconv.FormatUint(v.Major, 10))
+	sb.WriteString(strconv.Itoa(v.Major))
 	sb.WriteByte('.')
-	sb.WriteString(strconv.FormatUint(v.Minor, 10))
+	sb.WriteString(strconv.Itoa(v.Minor))
 	sb.WriteByte('.')
-	sb.WriteString(strconv.FormatUint(v.Patch, 10))
+	sb.WriteString(strconv.Itoa(v.Patch))
 	if p := v.PreRelease; p != "" {
 		sb.WriteByte('-')
 		sb.WriteString(p)

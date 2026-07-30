@@ -83,6 +83,35 @@ func TestMustParse(t *testing.T) {
 	_ = semver.MustParse("bad")
 }
 
+func TestIsValid(t *testing.T) {
+	testcases := []struct {
+		v semver.SemVer
+		b bool
+	}{
+		{semver.SemVer{}, true},
+		{semver.SemVer{1, 1, 1, "", ""}, true},
+		{semver.SemVer{-1, 1, 1, "", ""}, false},
+		{semver.SemVer{1, -1, 1, "", ""}, false},
+		{semver.SemVer{1, 1, -1, "", ""}, false},
+		{semver.SemVer{0, 0, 0, "bla", ""}, true},
+		{semver.SemVer{0, 0, 0, "", "fasel"}, true},
+		{semver.SemVer{0, 0, 0, "bla", "fasel"}, true},
+		{semver.SemVer{0, 0, 0, " ", ""}, false},
+		{semver.SemVer{0, 0, 0, "b!a", ""}, false},
+		{semver.SemVer{0, 0, 0, "bla.", ""}, false},
+		{semver.SemVer{0, 0, 0, "", " "}, false},
+		{semver.SemVer{0, 0, 0, "", "fa?el"}, false},
+		{semver.SemVer{0, 0, 0, "", "fasel."}, false},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.v.String(), func(t *testing.T) {
+			if got := tc.v.IsValid(); got != tc.b {
+				t.Errorf("should be %v, but got %v", tc.b, got)
+			}
+		})
+	}
+}
+
 func TestString(t *testing.T) {
 	for _, tc := range generalTestcases {
 		if !tc.b {
