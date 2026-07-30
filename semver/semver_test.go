@@ -25,6 +25,7 @@ var generalTestcases = []struct {
 	b bool
 	v semver.SemVer
 }{
+	{"", false, semver.SemVer{}},
 	{"bad", false, semver.SemVer{}},
 	{"1", false, semver.SemVer{}},
 	{"1-pre", false, semver.SemVer{}},
@@ -148,6 +149,8 @@ func TestCompare(t *testing.T) {
 		l, r string
 		c    int
 	}{
+		{"0.0.0", "0.0.0", 0},
+		{"0.0.0", "1.0.0", -1},
 		{"1.0.0", "2.0.0", -1},
 		{"2.0.0", "2.1.0", -1},
 		{"2.1.0", "2.1.1", -1},
@@ -185,6 +188,8 @@ func TestCompatible(t *testing.T) {
 		l, r string
 		c    bool
 	}{
+		{"0.0.0", "0.0.0", true},
+		{"0.0.0", "0.1.0", true},
 		{"0.0.0", "1.0.0", false},
 		{"2.0.0", "1.0.0", false},
 		{"2.0.0", "2.1.0", true},
