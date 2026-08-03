@@ -95,7 +95,7 @@ func DeduplicateSeq[V comparable](seq iter.Seq[V]) iter.Seq[V] {
 			if s.Contains(elem) {
 				continue
 			}
-			s = s.Add(elem)
+			s.Insert(elem)
 			if !yield(elem) {
 				return
 			}

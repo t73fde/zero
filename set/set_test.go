@@ -35,7 +35,7 @@ func TestNewHas(t *testing.T) {
 	if !s.Contains(3) {
 		t.Error("3")
 	}
-	vals := slices.Collect(s.Values())
+	vals := slices.Collect(s.All())
 	if len(vals) != 3 {
 		t.Error(vals)
 	}
@@ -54,14 +54,14 @@ func TestSetString(t *testing.T) {
 	if got := s.String(); got != "{3}" {
 		t.Error("{3} string got:", got)
 	}
-	s.Add(5)
+	s.Insert(5)
 	got := s.String()
 	if !strings.ContainsRune(got, ',') {
 		t.Error(s, "got not comma:", got)
 	}
 }
 
-func TestSetLength(t *testing.T) {
+func TestSetLen(t *testing.T) {
 	testdata := []struct {
 		name string
 		s    *set.Set[int]
@@ -75,7 +75,7 @@ func TestSetLength(t *testing.T) {
 	}
 	for _, tc := range testdata {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := tc.s.Length(); tc.exp != got {
+			if got := tc.s.Len(); tc.exp != got {
 				t.Errorf("set %v length exp: %d, got %d", tc.s, tc.exp, got)
 			}
 		})

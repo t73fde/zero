@@ -58,11 +58,13 @@ func (s *Set[E]) String() string {
 	return sb.String()
 }
 
-// Add an elements to the set.
-func (s *Set[E]) Add(elem E) *Set[E] {
-	s = s.ensure()
-	s.m[elem] = struct{}{}
-	return s
+// Insert an elements to the set.
+func (s *Set[E]) Insert(elem E) {
+	if s.m == nil {
+		s.m = map[E]struct{}{elem: {}}
+	} else {
+		s.m[elem] = struct{}{}
+	}
 }
 
 // Contains returns true, if the set contains the element.
@@ -74,16 +76,16 @@ func (s *Set[E]) Contains(elem E) bool {
 	return false
 }
 
-// Length returns the number of elements in the set.
-func (s *Set[E]) Length() int {
+// Len returns the number of elements in the set.
+func (s *Set[E]) Len() int {
 	if s != nil {
 		return len(s.m)
 	}
 	return 0
 }
 
-// Values returns an iterator of all elements of the set.
-func (s *Set[E]) Values() iter.Seq[E] {
+// All returns an iterator of all elements of the set.
+func (s *Set[E]) All() iter.Seq[E] {
 	return func(yield func(E) bool) {
 		if s != nil && s.m != nil {
 			for elem := range s.m {
@@ -95,12 +97,11 @@ func (s *Set[E]) Values() iter.Seq[E] {
 	}
 }
 
-// Remove an element from the set.
-func (s *Set[E]) Remove(elem E) *Set[E] {
+// Delete an element from the set.
+func (s *Set[E]) Delete(elem E) {
 	if s != nil && s.m != nil {
 		delete(s.m, elem)
 	}
-	return s
 }
 
 // Equal returns true if both sets contain the same elements.
@@ -132,15 +133,4 @@ func (s *Set[E]) Clone() *Set[E] {
 		m[elem] = struct{}{}
 	}
 	return &Set[E]{m}
-}
-
-// ensure a valid zero value.
-func (s *Set[E]) ensure() *Set[E] {
-	if s == nil {
-		return New[E]()
-	}
-	if s.m == nil {
-		s.m = map[E]struct{}{}
-	}
-	return s
 }

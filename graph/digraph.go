@@ -41,7 +41,8 @@ func (dg Digraph[T]) RemoveVertex(v T) {
 	if len(dg) > 0 {
 		delete(dg, v)
 		for vertex, closure := range dg {
-			dg[vertex] = closure.Remove(v)
+			closure.Delete(v)
+			dg[vertex] = closure
 		}
 	}
 }
@@ -52,7 +53,11 @@ func (dg Digraph[T]) AddEdge(from, to T) Digraph[T] {
 	if dg == nil {
 		return Digraph[T]{from: set.New(to), to: nil}
 	}
-	dg[from] = dg[from].Add(to)
+	if fromSet := dg[from]; fromSet != nil {
+		fromSet.Insert(to)
+	} else {
+		dg[from] = set.New(to)
+	}
 	return dg
 }
 
@@ -107,7 +112,7 @@ func (dg Digraph[T]) Vertices() *set.Set[T] {
 	}
 	verts := set.New[T]()
 	for vert := range dg {
-		verts.Add(vert)
+		verts.Insert(vert)
 	}
 	return verts
 }
@@ -115,7 +120,7 @@ func (dg Digraph[T]) Vertices() *set.Set[T] {
 // Edges returns an unsorted slice of the edges of the digraph.
 func (dg Digraph[T]) Edges() (es EdgeSlice[T]) {
 	for vert, closure := range dg {
-		for next := range closure.Values() {
+		for next := range closure.All() {
 			es = append(es, Edge[T]{From: vert, To: next})
 		}
 	}
@@ -130,8 +135,8 @@ func (dg Digraph[T]) Originators() *set.Set[T] {
 	}
 	origs := dg.Vertices()
 	for _, closure := range dg {
-		for c := range closure.Values() {
-			origs.Remove(c)
+		for c := range closure.All() {
+			origs.Delete(c)
 		}
 	}
 	return origs
@@ -141,8 +146,12 @@ func (dg Digraph[T]) Originators() *set.Set[T] {
 // other vertices.
 func (dg Digraph[T]) Terminators() (terms *set.Set[T]) {
 	for vert, closure := range dg {
-		if closure.Length() == 0 {
-			terms = terms.Add(vert)
+		if closure.Len() == 0 {
+			if terms == nil {
+				terms = set.New(vert)
+			} else {
+				terms.Insert(vert)
+			}
 		}
 	}
 	return terms
@@ -162,12 +171,16 @@ func (dg Digraph[T]) TransitiveClosure(v T) (tc Digraph[T]) {
 			continue
 		}
 		tc = tc.AddVertex(curr)
-		for next := range dg[curr].Values() {
+		for next := range dg[curr].All() {
 			tc = tc.AddVertex(next)
 			tc = tc.AddEdge(curr, next)
 			stack = append(stack, next)
 		}
-		marked = marked.Add(curr)
+		if marked == nil {
+			marked = set.New(curr)
+		} else {
+			marked.Insert(curr)
+		}
 	}
 	return tc
 }
@@ -178,7 +191,7 @@ func (dg Digraph[T]) ReachableVertices(startV T) (tc *set.Set[T]) {
 	if len(dg) == 0 {
 		return nil
 	}
-	stack := slices.Collect(dg[startV].Values())
+	stack := slices.Collect(dg[startV].All())
 	for last := len(stack) - 1; last >= 0; last = len(stack) - 1 {
 		curr := stack[last]
 		stack = stack[:last]
@@ -189,8 +202,12 @@ func (dg Digraph[T]) ReachableVertices(startV T) (tc *set.Set[T]) {
 		if !found {
 			continue
 		}
-		tc = tc.Add(curr)
-		for next := range closure.Values() {
+		if tc == nil {
+			tc = set.New(curr)
+		} else {
+			tc.Insert(curr)
+		}
+		for next := range closure.All() {
 			stack = append(stack, next)
 		}
 	}
@@ -212,7 +229,7 @@ func (dg Digraph[T]) IsDAG() (T, bool) {
 func (dg Digraph[T]) Reverse() (revDg Digraph[T]) {
 	for vertex, closure := range dg {
 		revDg = revDg.AddVertex(vertex)
-		for next := range closure.Values() {
+		for next := range closure.All() {
 			revDg = revDg.AddVertex(next)
 			revDg = revDg.AddEdge(next, vertex)
 		}
@@ -231,13 +248,13 @@ func (dg Digraph[T]) SortReverse() (sl []T) {
 	tempDg := dg.Clone()
 	for len(tempDg) > 0 {
 		terms := tempDg.Terminators()
-		if terms.Length() == 0 {
+		if terms.Len() == 0 {
 			break
 		}
-		termSlice := slices.Sorted(terms.Values())
+		termSlice := slices.Sorted(terms.All())
 		slices.Reverse(termSlice)
 		sl = append(sl, termSlice...)
-		for t := range terms.Values() {
+		for t := range terms.All() {
 			tempDg.RemoveVertex(t)
 		}
 	}
