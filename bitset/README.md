@@ -91,8 +91,8 @@ bs.Contains(42)
 
 count := bs.Count()
 
-min, ok := bs.Min()
-max, ok := bs.Max()
+lowest, ok := bs.Min()
+highest, ok := bs.Max()
 ```
 
 ### Copying
@@ -100,7 +100,7 @@ max, ok := bs.Max()
 `BitSet` values can be copied safely:
 
 ```go
-copy := bs.Clone()
+clone := bs.Clone()
 ```
 
 The clone has independent storage and can be modified without affecting the original.
@@ -108,7 +108,7 @@ The clone has independent storage and can be modified without affecting the orig
 A normal assignment only copies the `BitSet` value, including the slice header:
 
 ```go
-copy := bs
+alias := bs
 ```
 
 Both values will refer to the same underlying storage.

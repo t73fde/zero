@@ -98,8 +98,8 @@ func (bs BitSet) Contains(n uint) bool {
 // Count returns the number of values in the set.
 func (bs BitSet) Count() int {
 	count := 0
-	for _, word := range bs.words {
-		count += bits.OnesCount(word)
+	for _, w := range bs.words {
+		count += bits.OnesCount(w)
 	}
 	return count
 }
