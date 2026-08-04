@@ -36,7 +36,7 @@ func main() {
 	fmt.Println(escapes.Contains('*'))
 	fmt.Println(escapes.Contains('a'))
 
-    for value := range escapes.All() {
+	for value := range escapes.All() {
 		fmt.Println(value)
 	}
 }
