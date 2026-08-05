@@ -84,6 +84,11 @@ func (bs *BitSet) Delete(n uint) {
 	bs.words[index] &^= 1 << (n & wordMask)
 }
 
+// DeleteAll removes all values from the set while retaining the allocated storage.
+func (bs *BitSet) DeleteAll() {
+	clear(bs.words)
+}
+
 // ----- Queries
 
 // Contains reports whether a non-negative integer is in the set.

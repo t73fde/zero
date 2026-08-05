@@ -15,6 +15,44 @@ package bitset
 
 import "testing"
 
+func TestDeleteAll(t *testing.T) {
+	bs := New[uint](1, 3, 7, 42, 100)
+	capBefore := cap(bs.words)
+	if bs.Count() == 0 {
+		t.Fatal("Count() = 0, want 3")
+	}
+
+	bs.DeleteAll()
+
+	if !bs.IsEmpty() {
+		t.Fatal("DeleteAll(): set is not empty")
+	}
+	if bs.Count() != 0 {
+		t.Fatalf("DeleteAll(): Count() = %d, want 0", bs.Count())
+	}
+	if got, ok := bs.Min(); ok {
+		t.Fatalf("DeleteAll(): Min() = (%d, true), want (_, false)", got)
+	}
+	if got, ok := bs.Max(); ok {
+		t.Fatalf("DeleteAll(): Max() = (%d, true), want (_, false)", got)
+	}
+	if got := bs.String(); got != "{}" {
+		t.Fatalf("DeleteAll(): String() = %q, want %q", got, "{}")
+	}
+	if cap(bs.words) != capBefore {
+		t.Fatalf("DeleteAll(): capacity changed from %d to %d", capBefore, cap(bs.words))
+	}
+}
+
+func TestDeleteAllEmpty(t *testing.T) {
+	var bs BitSet
+
+	bs.DeleteAll()
+	if !bs.IsEmpty() {
+		t.Fatal("DeleteAll() on empty set is not empty")
+	}
+}
+
 func TestEnsureBit(t *testing.T) {
 	var bs BitSet
 
