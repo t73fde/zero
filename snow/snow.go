@@ -204,7 +204,7 @@ func (key Key) reverseEncode() ([13]byte, int) {
 	for u64 > 0 {
 		temp[tpos] = base32chars[u64%32]
 		tpos++
-		u64 = u64 >> 5
+		u64 >>= 5
 	}
 	return temp, tpos
 }
