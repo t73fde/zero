@@ -1,6 +1,6 @@
 # bitset
 
-`bitset` provides a compact set implementation for non-negative integers.
+This package provides a compact set implementation for non-negative integers.
 
 A `BitSet` stores each value as a single bit and is optimized for dense value ranges and fast membership tests.
 
@@ -105,7 +105,7 @@ clone := bs.Clone()
 
 The clone has independent storage and can be modified without affecting the original.
 
-A normal assignment only copies the `BitSet` value, including the slice header:
+A normal assignment only copies the `BitSet` value:
 
 ```go
 alias := bs
@@ -125,7 +125,8 @@ for value := range bs.All() {
 
 ## Storage
 
-`BitSet` is optimized for dense ranges of values. For example, character sets or small integer domains are stored very efficiently.
+`BitSet` is optimized for dense ranges of values.
+For example, character sets or small integer domains are stored very efficiently.
 
 For very sparse values with large gaps, a different data structure may be more appropriate.
 
