@@ -14,6 +14,7 @@
 package strings_test
 
 import (
+	"slices"
 	"testing"
 
 	"t73f.de/r/zero/strings"
@@ -21,7 +22,7 @@ import (
 
 func TestSlugify(t *testing.T) {
 	t.Parallel()
-	tests := []struct{ in, exp string }{
+	testcases := []struct{ in, exp string }{
 		{"simple test", "simple-test"},
 		{"I'm a go developer", "i-m-a-go-developer"},
 		{"-!->simple   test<-!-", "simple-test"},
@@ -30,31 +31,16 @@ func TestSlugify(t *testing.T) {
 		{"a#b", "a-b"},
 		{"*", ""},
 	}
-	for _, test := range tests {
-		if got := strings.Slugify(test.in); got != test.exp {
-			t.Errorf("%q: %q != %q", test.in, got, test.exp)
+	for _, tc := range testcases {
+		if got := strings.Slugify(tc.in); got != tc.exp {
+			t.Errorf("%q: %q != %q", tc.in, got, tc.exp)
 		}
 	}
-}
-
-func eqStringSlide(got, exp []string) bool {
-	if got == nil {
-		return exp == nil
-	}
-	if len(got) != len(exp) {
-		return false
-	}
-	for i, g := range got {
-		if g != exp[i] {
-			return false
-		}
-	}
-	return true
 }
 
 func TestNormalizeWord(t *testing.T) {
 	t.Parallel()
-	tests := []struct {
+	testcases := []struct {
 		in  string
 		exp []string
 	}{
@@ -72,10 +58,15 @@ func TestNormalizeWord(t *testing.T) {
 		{"1²3", []string{"123"}},
 		{"Period.", []string{"period"}},
 		{" WORD  NUMBER ", []string{"word", "number"}},
+		{"^ABC$", []string{"abc"}},
 	}
-	for _, test := range tests {
-		if got := strings.NormalizeWords(test.in); !eqStringSlide(got, test.exp) {
-			t.Errorf("%q: %q != %q", test.in, got, test.exp)
+	for _, tc := range testcases {
+		if got := strings.NormalizeWords(tc.in); !slices.Equal(got, tc.exp) {
+			t.Errorf("%q: %q != %q", tc.in, got, tc.exp)
+		}
+		got := slices.Collect(strings.NormalizeWordsSeq(tc.in))
+		if !slices.Equal(got, tc.exp) {
+			t.Errorf("%q: %q != %q", tc.in, got, tc.exp)
 		}
 	}
 }

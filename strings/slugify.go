@@ -14,7 +14,8 @@
 package strings
 
 import (
-	"strings"
+	"iter"
+	"slices"
 	"unicode"
 
 	"golang.org/x/text/unicode/norm"
@@ -22,26 +23,36 @@ import (
 
 // NormalizeWords produces a word list that is normalized for better searching.
 func NormalizeWords(s string) (result []string) {
-	word := make([]rune, 0, len(s))
-	for _, r := range norm.NFKD.String(s) {
-		if unicode.Is(unicode.Diacritic, r) {
-			continue
+	return slices.Collect(NormalizeWordsSeq(s))
+}
+
+// NormalizeWordsSeq produces an iterator over normalized words.
+func NormalizeWordsSeq(s string) iter.Seq[string] {
+	return func(yield func(string) bool) {
+		word := make([]rune, 0, 64)
+
+		for _, r := range norm.NFKD.String(s) {
+			if unicode.Is(unicode.Diacritic, r) {
+				continue
+			}
+
+			if unicode.In(r, unicode.Letter, unicode.Number) {
+				word = append(word, unicode.ToLower(r))
+			} else if !unicode.In(r, unicode.Mark, unicode.Sk, unicode.Lm) && len(word) > 0 {
+				if !yield(string(word)) {
+					return
+				}
+				word = word[:0]
+			}
 		}
-		if unicode.In(r, unicode.Letter, unicode.Number) {
-			word = append(word, unicode.ToLower(r))
-		} else if !unicode.In(r, unicode.Mark, unicode.Sk, unicode.Lm) && len(word) > 0 {
-			result = append(result, string(word))
-			word = word[:0]
+
+		if len(word) > 0 {
+			yield(string(word))
 		}
 	}
-	if len(word) > 0 {
-		result = append(result, string(word))
-	}
-	return result
 }
 
 // Slugify returns a string that can be used as part of an URL
 func Slugify(s string) string {
-	words := NormalizeWords(s)
-	return strings.Join(words, "-")
+	return JoinSeq(NormalizeWordsSeq(s), "-")
 }

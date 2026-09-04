@@ -185,32 +185,27 @@ func TestJoin(t *testing.T) {
 		sep   string
 		exp   string
 	}{
-		{
-			name:  "empty",
+		{name: "empty",
 			elems: nil,
 			sep:   ",",
 			exp:   "",
 		},
-		{
-			name:  "single",
+		{name: "single",
 			elems: []myString{"utf-8"},
 			sep:   ",",
 			exp:   "utf-8",
 		},
-		{
-			name:  "multiple",
+		{name: "multiple",
 			elems: []myString{"utf-8", "ascii", "latin1"},
 			sep:   ",",
 			exp:   "utf-8,ascii,latin1",
 		},
-		{
-			name:  "empty separator",
+		{name: "empty separator",
 			elems: []myString{"a", "b", "c"},
 			sep:   "",
 			exp:   "abc",
 		},
-		{
-			name:  "empty element",
+		{name: "empty element",
 			elems: []myString{"a", "", "c"},
 			sep:   ":",
 			exp:   "a::c",
@@ -222,6 +217,11 @@ func TestJoin(t *testing.T) {
 			got := strings.Join(tc.elems, tc.sep)
 			if got != tc.exp {
 				t.Errorf("Join(%v, %q) = %q, want %q", tc.elems, tc.sep, got, tc.exp)
+			}
+			seq := slices.Values(tc.elems)
+			got = strings.JoinSeq(seq, tc.sep)
+			if got != tc.exp {
+				t.Errorf("JoinSeq(%v, %q) = %q, want %q", tc.elems, tc.sep, got, tc.exp)
 			}
 		})
 	}

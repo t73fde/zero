@@ -110,3 +110,20 @@ func Join[S ~[]E, E ~string](elems S, sep string) string {
 
 	return b.String()
 }
+
+// JoinSeq concatenates the elements of seq into a single string,
+// inserting sep between consecutive elements.
+func JoinSeq[T ~string](seq iter.Seq[T], sep string) string {
+	var b strings.Builder
+
+	first := true
+	for s := range seq {
+		if !first {
+			b.WriteString(sep)
+		}
+		first = false
+		b.WriteString(string(s))
+	}
+
+	return b.String()
+}
