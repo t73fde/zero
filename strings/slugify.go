@@ -15,30 +15,42 @@ package strings
 
 import (
 	"iter"
-	"slices"
 	"unicode"
+	"unicode/utf8"
 
 	"golang.org/x/text/unicode/norm"
 )
 
-// NormalizeWords produces a word list that is normalized for better searching.
-func NormalizeWords(s string) (result []string) {
-	return slices.Collect(NormalizeWordsSeq(s))
-}
-
 // NormalizeWordsSeq produces an iterator over normalized words.
 func NormalizeWordsSeq(s string) iter.Seq[string] {
 	return func(yield func(string) bool) {
-		word := make([]rune, 0, 64)
+		word := make([]byte, 0, 64)
 
 		for _, r := range norm.NFKD.String(s) {
-			if unicode.Is(unicode.Diacritic, r) {
+			if r < utf8.RuneSelf {
+				switch {
+				case 'A' <= r && r <= 'Z':
+					word = append(word, byte(r)-'A'+'a')
+				case 'a' <= r && r <= 'z', '0' <= r && r <= '9':
+					word = append(word, byte(r))
+				default:
+					if len(word) > 0 {
+						if !yield(string(word)) {
+							return
+						}
+						word = word[:0]
+					}
+				}
+				continue
+			}
+
+			if unicode.In(r, unicode.Mark, unicode.Diacritic) {
 				continue
 			}
 
 			if unicode.In(r, unicode.Letter, unicode.Number) {
-				word = append(word, unicode.ToLower(r))
-			} else if !unicode.In(r, unicode.Mark, unicode.Sk, unicode.Lm) && len(word) > 0 {
+				word = utf8.AppendRune(word, unicode.ToLower(r))
+			} else if len(word) > 0 {
 				if !yield(string(word)) {
 					return
 				}

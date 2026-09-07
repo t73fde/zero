@@ -45,8 +45,10 @@ func TestNormalizeWord(t *testing.T) {
 		exp []string
 	}{
 		{"", nil},
-		{" ", nil},
-		{"ˋ", nil}, // No single diacritic char, such as U+02CB
+		{" ", nil},    //No single space
+		{"\xa0", nil}, // No single non-breaking space
+		{"ˋ", nil},    // No single diacritic char, such as U+02CB
+		{"^", nil},    // No single diacritic char, such as U+5E
 		{"simple test", []string{"simple", "test"}},
 		{"I'm a go developer", []string{"i", "m", "a", "go", "developer"}},
 		{"-!->simple   test<-!-", []string{"simple", "test"}},
@@ -57,13 +59,11 @@ func TestNormalizeWord(t *testing.T) {
 		{"123", []string{"123"}},
 		{"1²3", []string{"123"}},
 		{"Period.", []string{"period"}},
+		{"foo_bar", []string{"foo", "bar"}},
 		{" WORD  NUMBER ", []string{"word", "number"}},
 		{"^ABC$", []string{"abc"}},
 	}
 	for _, tc := range testcases {
-		if got := strings.NormalizeWords(tc.in); !slices.Equal(got, tc.exp) {
-			t.Errorf("%q: %q != %q", tc.in, got, tc.exp)
-		}
 		got := slices.Collect(strings.NormalizeWordsSeq(tc.in))
 		if !slices.Equal(got, tc.exp) {
 			t.Errorf("%q: %q != %q", tc.in, got, tc.exp)
