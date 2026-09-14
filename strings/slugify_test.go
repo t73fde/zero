@@ -45,7 +45,7 @@ func TestNormalizeWord(t *testing.T) {
 		exp []string
 	}{
 		{"", nil},
-		{" ", nil},    //No single space
+		{" ", nil},    // No single space
 		{"\xa0", nil}, // No single non-breaking space
 		{"ˋ", nil},    // No single diacritic char, such as U+02CB
 		{"^", nil},    // No single diacritic char, such as U+5E
