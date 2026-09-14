@@ -105,7 +105,7 @@ func BenchmarkCacheCompare(b *testing.B) {
 			_ = bytes.Equal(us1.cache(), us2.cache())
 		}
 	})
-	b.Run("Uint64Word", func(b *testing.B) {
+	b.Run("ArrayEqual", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
 			_ = us1.cacheEqual(us2)

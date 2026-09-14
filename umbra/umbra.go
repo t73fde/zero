@@ -84,7 +84,9 @@ func (us String) Equal(a *Arena, other String) bool {
 	if !us.cacheEqual(other) {
 		return false
 	}
-	return bytes.Equal(a.safeBytes(us.offset(), us.len), a.safeBytes(other.offset(), other.len))
+	return bytes.Equal(
+		a.safeBytes(us.offset(), us.len),
+		a.safeBytes(other.offset(), other.len))
 }
 
 // EqualBytes reports whether us and b have equal contents.

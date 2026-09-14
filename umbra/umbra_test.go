@@ -36,7 +36,7 @@ func TestLengthBoundaries(t *testing.T) {
 			a := NewArena(0)
 			us := a.FromBytes(s)
 			if got := us.Append(nil, a); !bytes.Equal(got, s) {
-				t.Fatal("Roundtrip fehlgeschlagen")
+				t.Fatal("roundtrip failed")
 			}
 		})
 	}
@@ -116,6 +116,7 @@ func TestEqualBytes(t *testing.T) {
 				t.Errorf("%q==%q (!)", usToString(us, a), content)
 			}
 		}
+		prev = us.Append(nil, a)
 	}
 }
 
