@@ -42,14 +42,14 @@ func genWords(n int, dupRate float64) [][]byte {
 func BenchmarkAddBytes(b *testing.B) {
 	words := genWords(200_000, 0.40)
 	for _, withInterning := range []bool{false, true} {
-		name, expected := "NoInterning", 0
+		name := "NoInterning"
 		if withInterning {
-			name, expected = "Interning", 150_000
+			name = "Interning"
 		}
 		b.Run(name, func(b *testing.B) {
 			b.ReportAllocs()
 			for range b.N {
-				a := NewArena(expected)
+				a := NewArena(100_000, withInterning)
 				for _, w := range words {
 					a.addBytes(w)
 				}
@@ -61,15 +61,15 @@ func BenchmarkAddBytes(b *testing.B) {
 var boolVal bool
 
 func BenchmarkEqual(b *testing.B) {
-	shortA, shortB := NewArena(0), NewArena(0)
+	shortA, shortB := NewArena(0, false), NewArena(0, false)
 	gsShort1 := shortA.FromBytes([]byte("short"))
 	gsShort2 := shortB.FromBytes([]byte("short"))
 
-	longNoIntern := NewArena(0)
+	longNoIntern := NewArena(0, false)
 	gsLong1 := longNoIntern.FromBytes([]byte("a_really_long_string_with_words"))
 	gsLong2 := longNoIntern.FromBytes([]byte("a_really_long_string_with_words"))
 
-	longIntern := NewArena(10)
+	longIntern := NewArena(10, true)
 	gsLongI1 := longIntern.FromBytes([]byte("a_really_long_string_with_words"))
 	gsLongI2 := longIntern.FromBytes([]byte("a_really_long_string_with_words"))
 
@@ -93,27 +93,8 @@ func BenchmarkEqual(b *testing.B) {
 	})
 }
 
-func BenchmarkCacheCompare(b *testing.B) {
-	a := NewArena(0)
-	us1 := a.FromBytes([]byte("a_really_long_string_with_words"))
-	us2 := a.FromBytes([]byte("a_really_longother_string_with_words"))
-
-	b.Run("BytesEqual", func(b *testing.B) {
-		b.ReportAllocs()
-		for range b.N {
-			boolVal = bytes.Equal(us1.cache(), us2.cache())
-		}
-	})
-	b.Run("ArrayEqual", func(b *testing.B) {
-		b.ReportAllocs()
-		for range b.N {
-			boolVal = us1.cacheEqual(us2)
-		}
-	})
-}
-
 func BenchmarkCompare(b *testing.B) {
-	a := NewArena(0)
+	a := NewArena(0, false)
 	content := []byte("donaudampfschifffahrtsgesellschaft")
 	us := a.FromBytes(content)
 
@@ -172,7 +153,7 @@ func BenchmarkCompare(b *testing.B) {
 		}
 	})
 
-	a = NewArena(16)
+	a = NewArena(0, true)
 	us = a.FromBytes(content)
 	b.Run("EqualIntern", func(b *testing.B) {
 		b.ReportAllocs()
@@ -183,7 +164,7 @@ func BenchmarkCompare(b *testing.B) {
 }
 
 func BenchmarkShort(b *testing.B) {
-	a := NewArena(0)
+	a := NewArena(0, false)
 	content := []byte("0123456789ABCD")
 	if len(content) != payloadLen {
 		panic(string(content))

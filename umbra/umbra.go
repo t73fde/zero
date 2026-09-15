@@ -65,11 +65,6 @@ func (us *String) setOffset(off uint32) {
 }
 func (us String) cache() []byte { return us.data[cacheOff : cacheOff+cacheLen] }
 
-func (us String) cacheEqualBytes(b []byte) bool {
-	return [cacheLen]byte(us.cache()) == [cacheLen]byte(b)
-}
-func (us String) cacheEqual(o String) bool { return us.cacheEqualBytes(o.cache()) }
-
 // Equal reports whether us and other have equal contents.
 func (us String) Equal(a *Arena, other String) bool {
 	if us.len != other.len {
@@ -78,15 +73,13 @@ func (us String) Equal(a *Arena, other String) bool {
 	if us.isShort() {
 		return us.data == other.data
 	}
-	if a.interningActive() { // Interning active -> same content = same offset
+	if a.useIntern { // Interning active -> same content = same offset
 		return us.offset() == other.offset()
 	}
-	if !us.cacheEqual(other) {
+	if !bytes.Equal(us.cache(), other.cache()) {
 		return false
 	}
-	return bytes.Equal(
-		a.safeBytes(us.offset(), us.len),
-		a.safeBytes(other.offset(), other.len))
+	return a.safeEqual(us.offset()+cacheLen, other.offset()+cacheLen, us.len-cacheLen)
 }
 
 // EqualBytes reports whether us and b have equal contents.
@@ -97,11 +90,11 @@ func (us String) EqualBytes(a *Arena, b []byte) bool {
 	if us.isShort() {
 		return bytes.Equal(us.data[:us.len], b)
 	}
-	if !us.cacheEqualBytes(b[:cacheLen]) {
+	if !bytes.Equal(us.cache(), b[:cacheLen]) {
 		// len(b) == us.len > payloadLen > cacheLen, b[:cacheLen] is safe
 		return false
 	}
-	return bytes.Equal(a.safeBytes(us.offset(), us.len), b)
+	return bytes.Equal(a.safeBytes(us.offset()+cacheLen, us.len-cacheLen), b[cacheLen:])
 }
 
 // HasPrefixBytes reports whether us starts with prefix.

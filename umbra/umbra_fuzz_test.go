@@ -26,7 +26,7 @@ func FuzzString(f *testing.F) {
 		if len(b) > math.MaxUint16 {
 			t.Skip()
 		}
-		a := NewArena(0)
+		a := NewArena(0, false)
 		us := a.FromBytes(b)
 
 		var buf []byte

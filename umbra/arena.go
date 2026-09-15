@@ -35,11 +35,11 @@ type Arena struct {
 	mu  sync.RWMutex
 	buf []byte
 
-	enabled bool
-	seed    maphash.Seed
-	entries []internEntry
-	mask    uint64
-	count   int
+	useIntern bool
+	seed      maphash.Seed
+	entries   []internEntry
+	mask      uint64
+	count     int
 }
 type internEntry struct {
 	hash   uint64
@@ -49,9 +49,14 @@ type internEntry struct {
 
 // NewArena creates an Arena object. sizeHint gives a hint about the expected
 // number of strings to be interned. 0 deactives interning.
-func NewArena(sizeHint int) *Arena {
-	a := &Arena{enabled: sizeHint > 0}
-	if a.enabled {
+func NewArena(sizeHint int, useIntern bool) *Arena {
+	const avgLongStringLen = 16
+
+	a := &Arena{
+		buf:       make([]byte, 0, max(0, sizeHint)*avgLongStringLen),
+		useIntern: useIntern,
+	}
+	if useIntern {
 		a.seed = maphash.MakeSeed()
 		size := 16
 		for sizeHint*10 >= size*7 { // 70% Load Factor
@@ -84,17 +89,23 @@ func (a *Arena) FromBytes(b []byte) String {
 
 func (a *Arena) safeBytes(off uint32, n uint16) []byte {
 	a.mu.RLock()
-	defer a.mu.RUnlock()
-	return a.rawBytes(off, n)
+	b := a.rawBytes(off, n)
+	a.mu.RUnlock()
+	return b
 }
 
-func (a *Arena) interningActive() bool { return a.enabled }
+func (a *Arena) safeEqual(off1, off2 uint32, n uint16) bool {
+	a.mu.RLock()
+	b := bytes.Equal(a.rawBytes(off1, n), a.rawBytes(off2, n))
+	a.mu.RUnlock()
+	return b
+}
 
 func (a *Arena) addBytes(s []byte) uint32 {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	if !a.interningActive() {
+	if !a.useIntern {
 		return a.rawAppend(s)
 	}
 

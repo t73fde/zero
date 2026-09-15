@@ -21,7 +21,7 @@ import (
 )
 
 func TestInterningDedup(t *testing.T) {
-	a := NewArena(2) // small enough to trigger resize of hash table
+	a := NewArena(2, true) // small enough to trigger resize of hash table
 	seen := map[string]uint32{}
 	words := []string{
 		"donaudampfschifffahrtsgesellschaft",
@@ -43,7 +43,7 @@ func TestInterningDedup(t *testing.T) {
 }
 
 func TestConcurrentAdd(*testing.T) {
-	a := NewArena(100)
+	a := NewArena(100, true)
 	var wg sync.WaitGroup
 	for i := range 50 {
 		wg.Add(1)
@@ -56,7 +56,7 @@ func TestConcurrentAdd(*testing.T) {
 }
 
 func TestConcurrentReadWrite(*testing.T) {
-	a := NewArena(100)
+	a := NewArena(100, true)
 	var wg sync.WaitGroup
 
 	initial := make([]String, 20)
@@ -77,6 +77,7 @@ func TestConcurrentReadWrite(*testing.T) {
 			us := initial[i%len(initial)]
 			_ = us.Append(nil, a)
 			_ = us.HasPrefixBytes(a, []byte("current-word"))
+			_ = us.Equal(a, us)
 		}
 	}()
 	wg.Wait()

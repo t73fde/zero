@@ -33,7 +33,7 @@ func TestLengthBoundaries(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := bytes.Repeat([]byte("x"), tt.n)
-			a := NewArena(0)
+			a := NewArena(0, false)
 			us := a.FromBytes(s)
 			if got := us.Append(nil, a); !bytes.Equal(got, s) {
 				t.Fatal("roundtrip failed")
@@ -48,14 +48,14 @@ func TestTooLongPanics(t *testing.T) {
 			t.Fatal("expected panic: len>65535 byte")
 		}
 	}()
-	NewArena(0).FromBytes(make([]byte, math.MaxUint16+1))
+	NewArena(0, false).FromBytes(make([]byte, math.MaxUint16+1))
 }
 
 func TestEqual(t *testing.T) {
 	const data = "01234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	for i := range 10 {
 		t.Run(fmt.Sprintf("NewArena(%d)", i), func(t *testing.T) {
-			testEqualArena(t, data, NewArena(i))
+			testEqualArena(t, data, NewArena(i, true))
 		})
 	}
 }
@@ -96,7 +96,7 @@ func usToString(us String, a *Arena) string { return string(us.Append(nil, a)) }
 
 func TestEqualBytes(t *testing.T) {
 	const data = "01234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	a := NewArena(100)
+	a := NewArena(100, true)
 	var prev []byte
 	for i := range data {
 		content := []byte(data[:i])
@@ -121,7 +121,7 @@ func TestEqualBytes(t *testing.T) {
 }
 
 func TestHasPrefixBytes(t *testing.T) {
-	a := NewArena(0)
+	a := NewArena(0, false)
 	usShort := a.FromBytes([]byte("01234567890"))
 	prefix := []byte("01234567890ABC")
 	if usShort.HasPrefixBytes(a, prefix) {
