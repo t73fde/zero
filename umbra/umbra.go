@@ -123,6 +123,9 @@ func (a *Arena) FromBytes(b []byte) String {
 	if n > math.MaxUint16 {
 		panic("umbra.String: capacity 65535 bytes exceeded")
 	}
+	if n+len(a.buf) > math.MaxUint32 {
+		panic("umbra.Arena: capacity 2**32 bytes exceeded")
+	}
 	var us String
 	us.len = uint16(n)
 	if n <= payloadLen {
