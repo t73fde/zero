@@ -76,19 +76,19 @@ func BenchmarkEqual(b *testing.B) {
 	b.Run("Short", func(b *testing.B) {
 		b.ReportAllocs()
 		for range b.N {
-			boolVal = gsShort1.Equal(shortA, gsShort2)
+			boolVal = shortA.Equal(gsShort1, gsShort2)
 		}
 	})
 	b.Run("LongNoInterning", func(b *testing.B) {
 		b.ReportAllocs()
 		for range b.N {
-			boolVal = gsLong1.Equal(longNoIntern, gsLong2)
+			boolVal = longNoIntern.Equal(gsLong1, gsLong2)
 		}
 	})
 	b.Run("LongInterning", func(b *testing.B) {
 		b.ReportAllocs()
 		for range b.N {
-			boolVal = gsLongI1.Equal(longIntern, gsLongI2)
+			boolVal = longIntern.Equal(gsLongI1, gsLongI2)
 		}
 	})
 }
@@ -102,54 +102,54 @@ func BenchmarkCompare(b *testing.B) {
 		needle := []byte("dona")
 		b.ReportAllocs()
 		for range b.N {
-			boolVal = us.HasPrefixBytes(a, needle)
+			boolVal = a.HasPrefixBytes(us, needle)
 		}
 	})
 	b.Run("HasPrefix_Arena", func(b *testing.B) {
 		needle := []byte("donaudampfschifffahr")
 		b.ReportAllocs()
 		for range b.N {
-			boolVal = us.HasPrefixBytes(a, needle)
+			boolVal = a.HasPrefixBytes(us, needle)
 		}
 	})
 	b.Run("ContainsFast", func(b *testing.B) {
 		needle := []byte("donau")
 		b.ReportAllocs()
 		for range b.N {
-			boolVal = us.ContainsBytes(a, needle)
+			boolVal = a.ContainsBytes(us, needle)
 		}
 	})
 	b.Run("ContainsMiddle", func(b *testing.B) {
 		needle := []byte("schifffahrt")
 		b.ReportAllocs()
 		for range b.N {
-			boolVal = us.ContainsBytes(a, needle)
+			boolVal = a.ContainsBytes(us, needle)
 		}
 	})
 	b.Run("ContainsAtEnd", func(b *testing.B) {
 		needle := []byte("gesellschaft")
 		b.ReportAllocs()
 		for range b.N {
-			boolVal = us.ContainsBytes(a, needle)
+			boolVal = a.ContainsBytes(us, needle)
 		}
 	})
 	b.Run("HasSuffix", func(b *testing.B) {
 		needle := []byte("gesellschaft")
 		b.ReportAllocs()
 		for range b.N {
-			boolVal = us.HasSuffixBytes(a, needle)
+			boolVal = a.HasSuffixBytes(us, needle)
 		}
 	})
 	b.Run("EqualBytes", func(b *testing.B) {
 		b.ReportAllocs()
 		for range b.N {
-			boolVal = us.EqualBytes(a, content)
+			boolVal = a.EqualBytes(us, content)
 		}
 	})
 	b.Run("Equal", func(b *testing.B) {
 		b.ReportAllocs()
 		for range b.N {
-			boolVal = us.Equal(a, us)
+			boolVal = a.Equal(us, us)
 		}
 	})
 
@@ -158,7 +158,7 @@ func BenchmarkCompare(b *testing.B) {
 	b.Run("EqualIntern", func(b *testing.B) {
 		b.ReportAllocs()
 		for range b.N {
-			boolVal = us.Equal(a, us)
+			boolVal = a.Equal(us, us)
 		}
 	})
 }
@@ -175,47 +175,47 @@ func BenchmarkShort(b *testing.B) {
 		needle := []byte("0123")
 		b.ReportAllocs()
 		for range b.N {
-			boolVal = us.HasPrefixBytes(a, needle)
+			boolVal = a.HasPrefixBytes(us, needle)
 		}
 	})
 	b.Run("ContainsPrefix", func(b *testing.B) {
 		needle := []byte("0123")
 		b.ReportAllocs()
 		for range b.N {
-			boolVal = us.ContainsBytes(a, needle)
+			boolVal = a.ContainsBytes(us, needle)
 		}
 	})
 	b.Run("ContainsMiddle", func(b *testing.B) {
 		needle := []byte("5678")
 		b.ReportAllocs()
 		for range b.N {
-			boolVal = us.ContainsBytes(a, needle)
+			boolVal = a.ContainsBytes(us, needle)
 		}
 	})
 	b.Run("ContainsEnd", func(b *testing.B) {
 		needle := []byte("ABCD")
 		b.ReportAllocs()
 		for range b.N {
-			boolVal = us.ContainsBytes(a, needle)
+			boolVal = a.ContainsBytes(us, needle)
 		}
 	})
 	b.Run("HasSuffix", func(b *testing.B) {
 		needle := []byte("ABCD")
 		b.ReportAllocs()
 		for range b.N {
-			boolVal = us.HasSuffixBytes(a, needle)
+			boolVal = a.HasSuffixBytes(us, needle)
 		}
 	})
 	b.Run("EqualBytes", func(b *testing.B) {
 		b.ReportAllocs()
 		for range b.N {
-			boolVal = us.EqualBytes(a, content)
+			boolVal = a.EqualBytes(us, content)
 		}
 	})
 	b.Run("EqualUmbra", func(b *testing.B) {
 		b.ReportAllocs()
 		for range b.N {
-			boolVal = us.Equal(a, us)
+			boolVal = a.Equal(us, us)
 		}
 	})
 

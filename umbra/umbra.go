@@ -11,8 +11,9 @@
 // SPDX-FileCopyrightText: 2026-present Detlef Stern
 // -----------------------------------------------------------------------------
 
-// Package umbra implements a compact string representation for in-memory search
-// indexes with many short words and word fragments.
+// Package umbra implements a compact string representation, e.g. for in-memory
+// search indexes with many short words and word fragments or similar
+// applications with matching contraints.
 //
 // Each string is encoded in a 16-byte struct: 2 bytes length, 14 bytes payload.
 // Strings up to 14 bytes are stored entirely inline, with no allocation and no
@@ -31,6 +32,9 @@ package umbra
 import (
 	"bytes"
 	"encoding/binary"
+	"hash/maphash"
+	"math"
+	"sync"
 )
 
 // String is a compact, 16-byte string value: 2 bytes length, 14 bytes payload.
@@ -65,8 +69,75 @@ func (us *String) setOffset(off uint32) {
 }
 func (us String) cache() []byte { return us.data[cacheOff : cacheOff+cacheLen] }
 
+// Arena stores the byte data of long strings (those exceeding the inline
+// capacity of a String) in a single, growing buffer. Offsets into the buffer
+// stay valid across internal reallocations, since they are relative positions
+// rather than pointers.
+//
+// Interning is optional: when enabled via NewArena, identical long fragments
+// are deduplicated through an embedded open-addressing hash table, so equal
+// content always maps to the same offset. Entries are never removed; content
+// that is no longer referenced simply stays unused in the buffer.
+//
+// An Arena is safe for concurrent use.
+type Arena struct {
+	mu  sync.RWMutex
+	buf []byte
+
+	useIntern bool
+	seed      maphash.Seed
+	entries   []internEntry
+	mask      uint64
+	count     int
+}
+type internEntry struct {
+	hash   uint64
+	offset uint32
+	length uint16 // 0 = empty Slot
+}
+
+// NewArena creates an Arena object. sizeHint gives a hint about the expected
+// number of strings to be interned. 0 deactives interning.
+func NewArena(sizeHint int, useIntern bool) *Arena {
+	const avgLongStringLen = 16
+
+	a := &Arena{
+		buf:       make([]byte, 0, max(0, sizeHint)*avgLongStringLen),
+		useIntern: useIntern,
+	}
+	if useIntern {
+		a.seed = maphash.MakeSeed()
+		size := 16
+		for sizeHint*10 >= size*7 { // 70% Load Factor
+			size *= 2
+		}
+		a.entries = make([]internEntry, size)
+		a.mask = uint64(size - 1)
+	}
+	return a
+}
+
+// FromBytes builds a String with the given content. The content is stored
+// in the arena, if its length exceeds 14 bytes. Otherwise, the content is
+// stored as a payload of the String.
+func (a *Arena) FromBytes(b []byte) String {
+	n := len(b)
+	if n > math.MaxUint16 {
+		panic("umbra.String: capacity 65535 bytes exceeded")
+	}
+	var us String
+	us.len = uint16(n)
+	if n <= payloadLen {
+		copy(us.data[:n], b)
+		return us
+	}
+	copy(us.data[cacheOff:cacheOff+cacheLen], b)
+	us.setOffset(a.addBytes(b))
+	return us
+}
+
 // Equal reports whether us and other have equal contents.
-func (us String) Equal(a *Arena, other String) bool {
+func (a *Arena) Equal(us String, other String) bool {
 	if us.len != other.len {
 		return false
 	}
@@ -83,7 +154,7 @@ func (us String) Equal(a *Arena, other String) bool {
 }
 
 // EqualBytes reports whether us and b have equal contents.
-func (us String) EqualBytes(a *Arena, b []byte) bool {
+func (a *Arena) EqualBytes(us String, b []byte) bool {
 	if int(us.len) != len(b) {
 		return false
 	}
@@ -98,7 +169,7 @@ func (us String) EqualBytes(a *Arena, b []byte) bool {
 }
 
 // HasPrefixBytes reports whether us starts with prefix.
-func (us String) HasPrefixBytes(a *Arena, prefix []byte) bool {
+func (a *Arena) HasPrefixBytes(us String, prefix []byte) bool {
 	if len(prefix) > int(us.len) {
 		return false
 	}
@@ -112,7 +183,7 @@ func (us String) HasPrefixBytes(a *Arena, prefix []byte) bool {
 }
 
 // HasSuffixBytes reports whether us ends with suffix.
-func (us String) HasSuffixBytes(a *Arena, suffix []byte) bool {
+func (a *Arena) HasSuffixBytes(us String, suffix []byte) bool {
 	if us.isShort() {
 		return bytes.HasSuffix(us.data[:us.len], suffix)
 	}
@@ -120,7 +191,7 @@ func (us String) HasSuffixBytes(a *Arena, suffix []byte) bool {
 }
 
 // ContainsBytes reports whether us contains sub.
-func (us String) ContainsBytes(a *Arena, sub []byte) bool {
+func (a *Arena) ContainsBytes(us String, sub []byte) bool {
 	if us.isShort() {
 		return bytes.Contains(us.data[:us.len], sub)
 	}
@@ -128,9 +199,89 @@ func (us String) ContainsBytes(a *Arena, sub []byte) bool {
 }
 
 // Append appends the contents of us to dst and returns the resulting slice.
-func (us String) Append(dst []byte, a *Arena) []byte {
+func (a *Arena) Append(dst []byte, us String) []byte {
 	if us.isShort() {
 		return append(dst, us.data[:us.len]...)
 	}
 	return append(dst, a.safeBytes(us.offset(), us.len)...)
+}
+
+func (a *Arena) safeBytes(off uint32, n uint16) []byte {
+	a.mu.RLock()
+	b := a.rawBytes(off, n)
+	a.mu.RUnlock()
+	return b
+}
+
+func (a *Arena) safeEqual(off1, off2 uint32, n uint16) bool {
+	a.mu.RLock()
+	b := bytes.Equal(a.rawBytes(off1, n), a.rawBytes(off2, n))
+	a.mu.RUnlock()
+	return b
+}
+
+func (a *Arena) addBytes(s []byte) uint32 {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if !a.useIntern {
+		return a.rawAppend(s)
+	}
+
+	h := maphash.Bytes(a.seed, s)
+	for i := h & a.mask; ; i = (i + 1) & a.mask {
+		e := &a.entries[i]
+		if e.length == 0 {
+			break // not found
+		}
+		if e.hash == h && int(e.length) == len(s) &&
+			bytes.Equal(a.rawBytes(e.offset, e.length), s) {
+			return e.offset
+		}
+	}
+
+	off := a.rawAppend(s)
+	a.insert(h, off, uint16(len(s)))
+	return off
+}
+
+func (a *Arena) rawBytes(off uint32, n uint16) []byte {
+	end := off + uint32(n)
+	return a.buf[off:end:end]
+}
+
+func (a *Arena) rawAppend(s []byte) uint32 {
+	off := uint32(len(a.buf))
+	a.buf = append(a.buf, s...)
+	return off
+}
+
+func (a *Arena) insert(h uint64, offset uint32, length uint16) {
+	if (a.count+1)*10 >= len(a.entries)*7 {
+		a.growTable()
+	}
+	for i := h & a.mask; ; i = (i + 1) & a.mask {
+		if a.entries[i].length == 0 {
+			a.entries[i] = internEntry{hash: h, offset: offset, length: length}
+			a.count++
+			return
+		}
+	}
+}
+
+func (a *Arena) growTable() {
+	old := a.entries
+	a.entries = make([]internEntry, len(old)*2)
+	a.mask = uint64(len(a.entries) - 1)
+	for _, e := range old {
+		if e.length == 0 {
+			continue
+		}
+		for i := e.hash & a.mask; ; i = (i + 1) & a.mask {
+			if a.entries[i].length == 0 {
+				a.entries[i] = e
+				break
+			}
+		}
+	}
 }

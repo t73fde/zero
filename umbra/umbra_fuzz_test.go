@@ -30,19 +30,19 @@ func FuzzString(f *testing.F) {
 		us := a.FromBytes(b)
 
 		var buf []byte
-		if got := us.Append(buf, a); !bytes.Equal(got, b) {
+		if got := a.Append(buf, us); !bytes.Equal(got, b) {
 			t.Fatalf("Full() = %q, want %q", got, b)
 		}
-		if got, want := us.HasPrefixBytes(a, needle), bytes.HasPrefix(b, needle); got != want {
+		if got, want := a.HasPrefixBytes(us, needle), bytes.HasPrefix(b, needle); got != want {
 			t.Fatalf("HasPrefix(%q, %q) = %v, want %v", b, needle, got, want)
 		}
-		if got, want := us.HasSuffixBytes(a, needle), bytes.HasSuffix(b, needle); got != want {
+		if got, want := a.HasSuffixBytes(us, needle), bytes.HasSuffix(b, needle); got != want {
 			t.Fatalf("HasSuffix(%q, %q) = %v, want %v", b, needle, got, want)
 		}
-		if got, want := us.ContainsBytes(a, needle), bytes.Contains(b, needle); got != want {
+		if got, want := a.ContainsBytes(us, needle), bytes.Contains(b, needle); got != want {
 			t.Fatalf("Contains(%q, %q) = %v, want %v", b, needle, got, want)
 		}
-		if !us.EqualBytes(a, b) {
+		if !a.EqualBytes(us, b) {
 			t.Fatalf("EqualBytes with itself must be true")
 		}
 	})

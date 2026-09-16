@@ -75,9 +75,9 @@ func TestConcurrentReadWrite(*testing.T) {
 		defer wg.Done()
 		for i := range 5000 {
 			us := initial[i%len(initial)]
-			_ = us.Append(nil, a)
-			_ = us.HasPrefixBytes(a, []byte("current-word"))
-			_ = us.Equal(a, us)
+			_ = a.Append(nil, us)
+			_ = a.HasPrefixBytes(us, []byte("current-word"))
+			_ = a.Equal(us, us)
 		}
 	}()
 	wg.Wait()

@@ -35,7 +35,7 @@ func TestLengthBoundaries(t *testing.T) {
 			s := bytes.Repeat([]byte("x"), tt.n)
 			a := NewArena(0, false)
 			us := a.FromBytes(s)
-			if got := us.Append(nil, a); !bytes.Equal(got, s) {
+			if got := a.Append(nil, us); !bytes.Equal(got, s) {
 				t.Fatal("roundtrip failed")
 			}
 		})
@@ -70,21 +70,21 @@ func testEqualArena(t *testing.T, data string, a *Arena) {
 			usB := a.FromBytes(content)
 
 			switch {
-			case !usA.Equal(a, usB):
+			case !a.Equal(usA, usB):
 				t.Errorf("%q!=%q", usToString(usA, a), usToString(usB, a))
-			case !usB.Equal(a, usA):
+			case !a.Equal(usB, usA):
 				t.Errorf("%q!=%q, but a==b", usToString(usB, a), usToString(usA, a))
 			case i > 0:
 				content[0] = '?'
 				usC := a.FromBytes(content)
-				if usA.Equal(a, usC) {
+				if a.Equal(usA, usC) {
 					t.Errorf("%q==%q (usC)", usToString(usA, a), usToString(usC, a))
-				} else if usC.Equal(a, usA) {
+				} else if a.Equal(usC, usA) {
 					t.Errorf("%q==%q, but a!=c", usToString(usC, a), usToString(usA, a))
 				}
-				if prev.Equal(a, usA) {
+				if a.Equal(prev, usA) {
 					t.Errorf("%q==%q (prev)", usToString(prev, a), usToString(usA, a))
-				} else if usA.Equal(a, prev) {
+				} else if a.Equal(usA, prev) {
 					t.Errorf("%q==%q, but prev!=a", usToString(usA, a), usToString(prev, a))
 				}
 			}
@@ -92,7 +92,7 @@ func testEqualArena(t *testing.T, data string, a *Arena) {
 		})
 	}
 }
-func usToString(us String, a *Arena) string { return string(us.Append(nil, a)) }
+func usToString(us String, a *Arena) string { return string(a.Append(nil, us)) }
 
 func TestEqualBytes(t *testing.T) {
 	const data = "01234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -102,21 +102,21 @@ func TestEqualBytes(t *testing.T) {
 		content := []byte(data[:i])
 		us := a.FromBytes(content)
 		switch {
-		case !us.EqualBytes(a, content):
+		case !a.EqualBytes(us, content):
 			t.Errorf("%q!=%q", usToString(us, a), string(content))
 		case i == 0:
-			if !us.EqualBytes(a, prev) {
+			if !a.EqualBytes(us, prev) {
 				t.Errorf("%q!=%q (nil)", usToString(us, a), string(prev))
 			}
-		case us.EqualBytes(a, prev):
+		case a.EqualBytes(us, prev):
 			t.Errorf("%q==%q", usToString(us, a), prev)
 		default:
 			content[0] = '!'
-			if us.EqualBytes(a, content) {
+			if a.EqualBytes(us, content) {
 				t.Errorf("%q==%q (!)", usToString(us, a), content)
 			}
 		}
-		prev = us.Append(nil, a)
+		prev = a.Append(nil, us)
 	}
 }
 
@@ -124,7 +124,7 @@ func TestHasPrefixBytes(t *testing.T) {
 	a := NewArena(0, false)
 	usShort := a.FromBytes([]byte("01234567890"))
 	prefix := []byte("01234567890ABC")
-	if usShort.HasPrefixBytes(a, prefix) {
+	if a.HasPrefixBytes(usShort, prefix) {
 		t.Errorf("%q must not have prefix %q", usToString(usShort, a), string(prefix))
 	}
 }

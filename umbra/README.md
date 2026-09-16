@@ -13,7 +13,7 @@ strings store a cached prefix inline plus an offset into a shared arena, so
 most comparisons never touch the arena at all.
 
 The package is named after the
-[Umbra-Paper](https://db.in.tum.de/~freitag/papers/p29-neumann-cidr20.pdf),
+[_Umbra Paper_](https://db.in.tum.de/~freitag/papers/p29-neumann-cidr20.pdf),
 which introduced the idea of this type of string representation.
 
 ## Constraints
