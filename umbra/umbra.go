@@ -34,7 +34,6 @@ import (
 	"encoding/binary"
 	"hash/maphash"
 	"math"
-	"sync"
 )
 
 // String is a compact, 16-byte string value: 2 bytes length, 14 bytes payload.
@@ -79,9 +78,8 @@ func (us String) cache() []byte { return us.data[cacheOff : cacheOff+cacheLen] }
 // content always maps to the same offset. Entries are never removed; content
 // that is no longer referenced simply stays unused in the buffer.
 //
-// An Arena is safe for concurrent use.
+// An Arena is **NOT** safe for concurrent use.
 type Arena struct {
-	mu  sync.RWMutex
 	buf []byte
 
 	useIntern bool
@@ -150,7 +148,8 @@ func (a *Arena) Equal(us String, other String) bool {
 	if !bytes.Equal(us.cache(), other.cache()) {
 		return false
 	}
-	return a.safeEqual(us.offset()+cacheLen, other.offset()+cacheLen, us.len-cacheLen)
+	n := us.len - cacheLen
+	return bytes.Equal(a.rawBytes(us.offset()+cacheLen, n), a.rawBytes(other.offset()+cacheLen, n))
 }
 
 // EqualBytes reports whether us and b have equal contents.
@@ -165,7 +164,7 @@ func (a *Arena) EqualBytes(us String, b []byte) bool {
 		// len(b) == us.len > payloadLen > cacheLen, b[:cacheLen] is safe
 		return false
 	}
-	return bytes.Equal(a.safeBytes(us.offset()+cacheLen, us.len-cacheLen), b[cacheLen:])
+	return bytes.Equal(a.rawBytes(us.offset()+cacheLen, us.len-cacheLen), b[cacheLen:])
 }
 
 // HasPrefixBytes reports whether us starts with prefix.
@@ -179,7 +178,7 @@ func (a *Arena) HasPrefixBytes(us String, prefix []byte) bool {
 	if len(prefix) <= cacheLen {
 		return bytes.Equal(us.data[cacheOff:cacheOff+len(prefix)], prefix)
 	}
-	return bytes.HasPrefix(a.safeBytes(us.offset(), us.len), prefix)
+	return bytes.HasPrefix(a.rawBytes(us.offset(), us.len), prefix)
 }
 
 // HasSuffixBytes reports whether us ends with suffix.
@@ -187,7 +186,7 @@ func (a *Arena) HasSuffixBytes(us String, suffix []byte) bool {
 	if us.isShort() {
 		return bytes.HasSuffix(us.data[:us.len], suffix)
 	}
-	return bytes.HasSuffix(a.safeBytes(us.offset(), us.len), suffix)
+	return bytes.HasSuffix(a.rawBytes(us.offset(), us.len), suffix)
 }
 
 // ContainsBytes reports whether us contains sub.
@@ -195,7 +194,7 @@ func (a *Arena) ContainsBytes(us String, sub []byte) bool {
 	if us.isShort() {
 		return bytes.Contains(us.data[:us.len], sub)
 	}
-	return bytes.Contains(a.safeBytes(us.offset(), us.len), sub)
+	return bytes.Contains(a.rawBytes(us.offset(), us.len), sub)
 }
 
 // Append appends the contents of us to dst and returns the resulting slice.
@@ -203,45 +202,28 @@ func (a *Arena) Append(dst []byte, us String) []byte {
 	if us.isShort() {
 		return append(dst, us.data[:us.len]...)
 	}
-	return append(dst, a.safeBytes(us.offset(), us.len)...)
+	return append(dst, a.rawBytes(us.offset(), us.len)...)
 }
 
-func (a *Arena) safeBytes(off uint32, n uint16) []byte {
-	a.mu.RLock()
-	b := a.rawBytes(off, n)
-	a.mu.RUnlock()
-	return b
-}
-
-func (a *Arena) safeEqual(off1, off2 uint32, n uint16) bool {
-	a.mu.RLock()
-	b := bytes.Equal(a.rawBytes(off1, n), a.rawBytes(off2, n))
-	a.mu.RUnlock()
-	return b
-}
-
-func (a *Arena) addBytes(s []byte) uint32 {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
+func (a *Arena) addBytes(b []byte) uint32 {
 	if !a.useIntern {
-		return a.rawAppend(s)
+		return a.rawAppend(b)
 	}
 
-	h := maphash.Bytes(a.seed, s)
+	h := maphash.Bytes(a.seed, b)
 	for i := h & a.mask; ; i = (i + 1) & a.mask {
 		e := &a.entries[i]
 		if e.length == 0 {
 			break // not found
 		}
-		if e.hash == h && int(e.length) == len(s) &&
-			bytes.Equal(a.rawBytes(e.offset, e.length), s) {
+		if e.hash == h && int(e.length) == len(b) &&
+			bytes.Equal(a.rawBytes(e.offset, e.length), b) {
 			return e.offset
 		}
 	}
 
-	off := a.rawAppend(s)
-	a.insert(h, off, uint16(len(s)))
+	off := a.rawAppend(b)
+	a.insert(h, off, uint16(len(b)))
 	return off
 }
 

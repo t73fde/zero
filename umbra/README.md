@@ -22,5 +22,6 @@ which introduced the idea of this type of string representation.
 - Arenas are limited to 4,294,967,296 bytes (2**32).
 - Designed for workloads with many short, frequently repeated fragments (e.g.
   tokenized words) rather than general-purpose text storage.
+- Not safe for concurrent use.
 - Not safe to use a string with any arena other than the one it was created
   from.
