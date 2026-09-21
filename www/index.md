@@ -15,6 +15,7 @@ This is a collection of utility functions for building applications in
 * [strings](/dir?ci=tip&name=strings): String functions.
 * [snow](/dir?ci=tip&name=snow): A key generator.
 * [umbra](/dir?ci=tip&name=umbra): A compact string representation.
+* [vocab](/dir?ci=tip&name=vocab): A word store.
 
 The name _Zero_ refers to "0-components", introduced in the book
 _Moderne Software-Architektur: Umsichtig planen, robust bauen mit Quasar_ by
