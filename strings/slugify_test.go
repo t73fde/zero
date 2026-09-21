@@ -17,6 +17,7 @@ import (
 	"slices"
 	"testing"
 
+	"t73f.de/r/zero/iter"
 	"t73f.de/r/zero/strings"
 )
 
@@ -64,7 +65,9 @@ func TestNormalizeWord(t *testing.T) {
 		{"^ABC$", []string{"abc"}},
 	}
 	for _, tc := range testcases {
-		got := slices.Collect(strings.NormalizeWordsSeq(tc.in))
+		got := slices.Collect(
+			iter.MapSeq(strings.NormalizeWordSeq(tc.in),
+				func(b []byte) string { return string(b) }))
 		if !slices.Equal(got, tc.exp) {
 			t.Errorf("%q: %q != %q", tc.in, got, tc.exp)
 		}

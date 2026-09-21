@@ -19,11 +19,13 @@ import (
 	"unicode/utf8"
 
 	"golang.org/x/text/unicode/norm"
+
+	zeroiter "t73f.de/r/zero/iter"
 )
 
-// NormalizeWordsSeq produces an iterator over normalized words.
-func NormalizeWordsSeq(s string) iter.Seq[string] {
-	return func(yield func(string) bool) {
+// NormalizeWordSeq produces an iterator over normalized fragments of a word.
+func NormalizeWordSeq(s string) iter.Seq[[]byte] {
+	return func(yield func([]byte) bool) {
 		word := make([]byte, 0, 64)
 
 		for _, r := range norm.NFKD.String(s) {
@@ -35,7 +37,7 @@ func NormalizeWordsSeq(s string) iter.Seq[string] {
 					word = append(word, byte(r))
 				default:
 					if len(word) > 0 {
-						if !yield(string(word)) {
+						if !yield(word) {
 							return
 						}
 						word = word[:0]
@@ -51,7 +53,7 @@ func NormalizeWordsSeq(s string) iter.Seq[string] {
 			if unicode.In(r, unicode.Letter, unicode.Number) {
 				word = utf8.AppendRune(word, unicode.ToLower(r))
 			} else if len(word) > 0 {
-				if !yield(string(word)) {
+				if !yield(word) {
 					return
 				}
 				word = word[:0]
@@ -59,12 +61,12 @@ func NormalizeWordsSeq(s string) iter.Seq[string] {
 		}
 
 		if len(word) > 0 {
-			yield(string(word))
+			yield(word)
 		}
 	}
 }
 
 // Slugify returns a string that can be used as part of an URL
 func Slugify(s string) string {
-	return JoinSeq(NormalizeWordsSeq(s), "-")
+	return JoinSeq(zeroiter.MapSeq(NormalizeWordSeq(s), func(b []byte) string { return string(b) }), "-")
 }
