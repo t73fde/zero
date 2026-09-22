@@ -23,7 +23,7 @@ func FuzzAgainstModel(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		v, m := New(0), newModel()
 		for w := range bytes.SplitSeq(data, []byte{0xff}) {
-			if got, want := v.Add(w), m.add(string(w)); got != want {
+			if got, want := v.AddBytes(w), m.add(string(w)); got != want {
 				t.Fatalf("Add(%q) = %d, want %d", w, got, want)
 			}
 		}

@@ -53,8 +53,8 @@ func (m *model) add(w string) WordID {
 func addAll(t *testing.T, v *Vocabulary, m *model, words []string) {
 	t.Helper()
 	for _, w := range words {
-		if got, want := v.Add([]byte(w)), m.add(w); got != want {
-			t.Fatalf("Add(%q) = %d, want %d", w, got, want)
+		if got, want := v.AddBytes([]byte(w)), m.add(w); got != want {
+			t.Fatalf("AddBytes(%q) = %d, want %d", w, got, want)
 		}
 	}
 }
@@ -245,9 +245,9 @@ func TestWordLengths(t *testing.T) {
 	for i, n := range lengths {
 		w := bytes.Repeat([]byte{byte('a' + i)}, n) // distinct per length
 		before := v.StoreLen()
-		id := v.Add(w)
+		id := v.AddBytes(w)
 		if want := WordID(i + 1); id != want {
-			t.Fatalf("length %d: Add = %d, want %d", n, id, want)
+			t.Fatalf("length %d: AddBytes = %d, want %d", n, id, want)
 		}
 		// Only long words are placed in the store.
 		wantStore := before
@@ -261,8 +261,8 @@ func TestWordLengths(t *testing.T) {
 			t.Errorf("length %d: word not restored (got %d bytes)", n, len(got))
 		}
 		// A second Add returns the same ID and does not grow the store.
-		if again := v.Add(w); again != id || v.StoreLen() != wantStore {
-			t.Errorf("length %d: second Add = %d, StoreLen = %d", n, again, v.StoreLen())
+		if again := v.AddBytes(w); again != id || v.StoreLen() != wantStore {
+			t.Errorf("length %d: second AddBytes = %d, StoreLen = %d", n, again, v.StoreLen())
 		}
 	}
 	checkInvariants(t, v)
@@ -270,14 +270,34 @@ func TestWordLengths(t *testing.T) {
 
 func TestAddTooLong(t *testing.T) {
 	v := New(0)
-	v.Add([]byte("House"))
+	v.AddBytes([]byte("House"))
 	tooLong := make([]byte, MaxWordLen+1)
-	assertPanics(t, "Add(too long)", func() { v.Add(tooLong) })
+	assertPanics(t, "AddBytes(too long)", func() { v.AddBytes(tooLong) })
 	if v.Len() != 1 || v.StoreLen() != 0 {
 		t.Errorf("state changed by panic: Len = %d, StoreLen = %d", v.Len(), v.StoreLen())
 	}
 	if id := v.Lookup(tooLong); id != 0 {
 		t.Errorf("Lookup(too long) = %d, want 0", id)
+	}
+}
+
+func TestAddString(t *testing.T) {
+	v := New(0)
+
+	id1 := v.AddString("hello")
+	id2 := v.AddString("hello")
+	if id1 != id2 {
+		t.Errorf("AddString(%q) = %v, want %v (same as first call)", "hello", id2, id1)
+	}
+
+	id3 := v.AddString("world")
+	if id3 == id1 {
+		t.Errorf("AddString(%q) = %v, want different WordID than AddString(%q) = %v", "world", id3, "hello", id1)
+	}
+
+	idBytes := v.AddBytes([]byte("hello"))
+	if idBytes != id1 {
+		t.Errorf("AddBytes(%q) = %v, want %v (same as AddString(%q))", "hello", idBytes, id1, "hello")
 	}
 }
 
@@ -296,7 +316,7 @@ func TestSizeHintAvoidsReallocation(t *testing.T) {
 		v := New(hint)
 		tableLen, idsCap := len(v.hashes), cap(v.ids)
 		for i := range hint {
-			v.Add(fmt.Appendf(nil, "word-%d", i))
+			v.AddBytes(fmt.Appendf(nil, "word-%d", i))
 		}
 		if len(v.hashes) != tableLen || cap(v.ids) != idsCap {
 			t.Errorf("hint %d: slices reallocated (table %d -> %d, ids cap %d -> %d)",
@@ -330,7 +350,7 @@ func TestGrowthThreshold(t *testing.T) {
 	v := New(0)
 	for i := 1; i <= 100_000; i++ {
 		before := len(v.hashes)
-		v.Add([]byte("w" + strconv.Itoa(i)))
+		v.AddBytes([]byte("w" + strconv.Itoa(i)))
 		grown := len(v.hashes) != before
 		if want := i*loadDen > before*loadNum; grown != want {
 			t.Fatalf("word %d: table grown = %v, want %v", i, grown, want)
@@ -341,7 +361,7 @@ func TestGrowthThreshold(t *testing.T) {
 func TestWriteTo(t *testing.T) {
 	v := New(0)
 	word := []byte("HelloWorld")
-	v.Add(word)
+	v.AddBytes(word)
 	id := v.Lookup(word)
 	if id == 0 {
 		panic("not found")
@@ -423,7 +443,7 @@ func (w *shortWriteWriter) Write(p []byte) (int, error) {
 func TestIteratorEarlyStop(t *testing.T) {
 	v := New(0)
 	for i := range 10 {
-		v.Add(fmt.Appendf(nil, "abc%dabc", i))
+		v.AddBytes(fmt.Appendf(nil, "abc%dabc", i))
 	}
 	seqs := map[string]iter.Seq[WordID]{
 		"WordsContaining": v.WordsContaining([]byte("bc")),
@@ -444,15 +464,15 @@ func TestIteratorEarlyStop(t *testing.T) {
 
 func TestIteratorSnapshot(t *testing.T) {
 	v := New(0)
-	v.Add([]byte("ab1"))
-	v.Add([]byte("ab2"))
+	v.AddBytes([]byte("ab1"))
+	v.AddBytes([]byte("ab2"))
 	var got []WordID
 	for id := range v.WordsWithPrefix([]byte("ab")) {
 		got = append(got, id)
 		// Adding words during the iteration must neither crash nor be
 		// visited, even if the internal slices are reallocated.
 		for i := range 50 {
-			v.Add(fmt.Appendf(nil, "ab-%d-%d", id, i))
+			v.AddBytes(fmt.Appendf(nil, "ab-%d-%d", id, i))
 		}
 	}
 	if !slices.Equal(got, []WordID{1, 2}) {
@@ -524,53 +544,53 @@ func TestStoreFull(t *testing.T) {
 	v := New(0, WithMaxStoreLen(60))
 	long1 := bytes.Repeat([]byte("a"), 60)
 	long2 := bytes.Repeat([]byte("b"), payloadLen+1)
-	id1 := v.Add(long1) // fits exactly
+	id1 := v.AddBytes(long1) // fits exactly
 	if v.StoreLen() != 60 {
 		t.Fatalf("StoreLen = %d, want 60", v.StoreLen())
 	}
-	assertPanics(t, "Add(store full)", func() { v.Add(long2) })
+	assertPanics(t, "AddBytes(store full)", func() { v.AddBytes(long2) })
 	if v.Len() != 1 || v.StoreLen() != 60 {
 		t.Errorf("state changed by panic: Len = %d, StoreLen = %d", v.Len(), v.StoreLen())
 	}
 	// Known long words and inline words are still accepted.
-	if got := v.Add(long1); got != id1 {
-		t.Errorf("Add(known long word) = %d, want %d", got, id1)
+	if got := v.AddBytes(long1); got != id1 {
+		t.Errorf("AddBytes(known long word) = %d, want %d", got, id1)
 	}
-	if got := v.Add([]byte("Haus")); got == 0 {
-		t.Error("Add(inline word) failed")
+	if got := v.AddBytes([]byte("Haus")); got == 0 {
+		t.Error("AddBytes(inline word) failed")
 	}
 	checkInvariants(t, v)
 }
 
 func TestStoreLenZero(t *testing.T) {
 	v := New(0, WithMaxStoreLen(0))
-	if v.Add([]byte("Haus")) == 0 { // inline words need no store
-		t.Fatal("Add(inline word) failed")
+	if v.AddBytes([]byte("Haus")) == 0 { // inline words need no store
+		t.Fatal("AddBytes(inline word) failed")
 	}
-	assertPanics(t, "Add(long word)", func() { v.Add(bytes.Repeat([]byte("a"), payloadLen+1)) })
+	assertPanics(t, "AddBytes(long word)", func() { v.AddBytes(bytes.Repeat([]byte("a"), payloadLen+1)) })
 }
 
 func TestWordsFull(t *testing.T) {
 	v := New(0, WithMaxWords(3))
-	ids := []WordID{v.Add([]byte("a")), v.Add([]byte("b")), v.Add([]byte("c"))}
+	ids := []WordID{v.AddBytes([]byte("a")), v.AddBytes([]byte("b")), v.AddBytes([]byte("c"))}
 	if !slices.Equal(ids, []WordID{1, 2, 3}) {
 		t.Fatalf("ids = %v, want [1 2 3]", ids)
 	}
 	// A long new word must be rejected before it reaches the store.
-	assertPanics(t, "Add(too many words)", func() { v.Add(bytes.Repeat([]byte("x"), 100)) })
+	assertPanics(t, "AddBytes(too many words)", func() { v.AddBytes(bytes.Repeat([]byte("x"), 100)) })
 	if v.Len() != 3 || v.StoreLen() != 0 {
 		t.Errorf("state changed by panic: Len = %d, StoreLen = %d", v.Len(), v.StoreLen())
 	}
 	// Known words are still accepted.
-	if got := v.Add([]byte("b")); got != 2 {
-		t.Errorf("Add(known word) = %d, want 2", got)
+	if got := v.AddBytes([]byte("b")); got != 2 {
+		t.Errorf("AddBytes(known word) = %d, want 2", got)
 	}
 	checkInvariants(t, v)
 }
 
 func TestWordsZero(t *testing.T) {
 	v := New(0, WithMaxWords(0))
-	assertPanics(t, "Add", func() { v.Add([]byte("a")) })
+	assertPanics(t, "Add", func() { v.AddBytes([]byte("a")) })
 	if v.Lookup([]byte("a")) != 0 || v.Len() != 0 {
 		t.Error("empty Vocabulary changed")
 	}
@@ -658,7 +678,7 @@ func TestProbeLengths(t *testing.T) {
 			t.Fatalf("table size %d, want %d", len(v.hashes), tableSize)
 		}
 		for i := range count {
-			v.Add([]byte("w" + strconv.Itoa(i)))
+			v.AddBytes([]byte("w" + strconv.Itoa(i)))
 		}
 		var sum, maxDist uint64
 		for i, h := range v.hashes {

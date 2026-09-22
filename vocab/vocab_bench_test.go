@@ -144,7 +144,7 @@ func corpus(b *testing.B, n int) [][]byte {
 func build(words [][]byte) *Vocabulary {
 	v := New(len(words))
 	for _, w := range words {
-		v.Add(w)
+		v.AddBytes(w)
 	}
 	return v
 }
@@ -166,12 +166,21 @@ func BenchmarkAdd(b *testing.B) {
 				for range b.N {
 					v := New(hint)
 					for _, w := range words {
-						v.Add(w)
+						v.AddBytes(w)
 					}
 				}
 				b.ReportMetric(float64(b.Elapsed().Nanoseconds())/float64(b.N*n), "ns/word")
 			})
 		}
+	}
+}
+
+// BenchmarkAddString measures AddString and verifies, via -benchmem,
+// that the string-to-[]byte conversion allocates nothing.
+func BenchmarkAddString(b *testing.B) {
+	v := New(0)
+	for b.Loop() {
+		v.AddString("hello")
 	}
 }
 
@@ -183,8 +192,8 @@ func BenchmarkAddKnown(b *testing.B) {
 		b.Run(fmt.Sprintf("n=%d", n), func(b *testing.B) {
 			b.ReportAllocs()
 			j := 0
-			for range b.N {
-				sink += int(v.Add(words[j]))
+			for b.Loop() {
+				sink += int(v.AddBytes(words[j]))
 				if j++; j == n {
 					j = 0
 				}
@@ -261,7 +270,7 @@ func BenchmarkBuild(b *testing.B) {
 			for range b.N {
 				v := New(len(words))
 				for _, w := range words {
-					v.Add(w)
+					v.AddBytes(w)
 				}
 				dummyV = v
 			}
@@ -454,7 +463,7 @@ func BenchmarkLoadFactor(b *testing.B) {
 		}
 		v := New(maxHint)
 		for _, w := range present {
-			v.Add(w)
+			v.AddBytes(w)
 		}
 		name := fmt.Sprintf("fill=%.3f", fill)
 		for _, tc := range []struct {
@@ -475,7 +484,7 @@ func BenchmarkLoadFactor(b *testing.B) {
 			for range b.N {
 				vb := New(maxHint)
 				for _, w := range present {
-					vb.Add(w)
+					vb.AddBytes(w)
 				}
 			}
 			b.ReportMetric(float64(b.Elapsed().Nanoseconds())/float64(b.N*count), "ns/word")

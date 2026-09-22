@@ -40,6 +40,7 @@ import (
 	"hash/maphash"
 	"io"
 	"math"
+	"unsafe"
 )
 
 // WordID identifies a distinct word within one Vocabulary. Valid IDs start at
@@ -175,13 +176,38 @@ func (v *Vocabulary) Len() int { return len(v.ids) - 1 }
 // StoreLen returns the current length of the store for long words in bytes.
 func (v *Vocabulary) StoreLen() int { return len(v.store) }
 
-// Add registers the word b and returns its ID. If the word is already known,
-// the existing ID is returned. The content of b is copied.
+// AddBytes registers the word b and returns its ID. If the word is already
+// known, the existing ID is returned. The content of b is copied.
 //
-// Add panics if b is longer than `MaxWordLen`, or if b is a new long word and
-// would not fit into the store anymore (see `MaxStoreLen`). A panic happens
-// before the Vocabulary is modified.
-func (v *Vocabulary) Add(b []byte) WordID {
+// AddBytes panics if b is longer than `MaxWordLen`, or if b is a new long
+// word and would not fit into the store anymore (see `MaxStoreLen`). A panic
+// happens before the Vocabulary is modified.
+func (v *Vocabulary) AddBytes(b []byte) WordID { return v.add(b) }
+
+// AddString registers s in the vocabulary and returns its WordID.
+// If s is already present, the existing WordID is returned; otherwise
+// s is stored and a new WordID is assigned.
+//
+// Similar to AddBytes, it may panic under certain circumstances.
+func (v *Vocabulary) AddString(s string) WordID {
+	b := unsafe.Slice(unsafe.StringData(s), len(s))
+	return v.add(b)
+}
+
+// Lookup returns the ID of the word b, or 0 if b was not added. Words longer
+// than MaxWordLen cannot be present; Lookup does not panic for them.
+func (v *Vocabulary) Lookup(b []byte) WordID {
+	if len(b) > MaxWordLen {
+		return 0
+	}
+	return v.probe(b, v.hash(b))
+}
+
+// add registers b in the vocabulary and returns its WordID. If b is
+// already present, the existing WordID is returned; otherwise b is
+// stored and a new WordID is assigned. add is the shared implementation
+// for AddBytes and AddString.
+func (v *Vocabulary) add(b []byte) WordID {
 	if len(b) > MaxWordLen {
 		panic("vocab: word too long")
 	}
@@ -202,15 +228,6 @@ func (v *Vocabulary) Add(b []byte) WordID {
 	v.ids = append(v.ids, s)
 	v.insert(h, id)
 	return id
-}
-
-// Lookup returns the ID of the word b, or 0 if b was not added. Words longer
-// than MaxWordLen cannot be present; Lookup does not panic for them.
-func (v *Vocabulary) Lookup(b []byte) WordID {
-	if len(b) > MaxWordLen {
-		return 0
-	}
-	return v.probe(b, v.hash(b))
 }
 
 // hash returns the hash of b. The value 0 is reserved as free-position marker
