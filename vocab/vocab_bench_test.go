@@ -90,7 +90,7 @@ func readWords(b *testing.B, path string, n int) []string {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer func() { f.Close() }()
+	defer func() { _ = f.Close() }()
 	seen := make(map[string]struct{})
 	var words []string
 	sc := bufio.NewScanner(f)
