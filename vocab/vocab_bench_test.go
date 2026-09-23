@@ -163,7 +163,7 @@ func BenchmarkAdd(b *testing.B) {
 				if hinted {
 					hint = n
 				}
-				for range b.N {
+				for b.Loop() {
 					v := New(hint)
 					for _, w := range words {
 						v.AddBytes(w)
@@ -219,7 +219,7 @@ func BenchmarkLookup(b *testing.B) {
 			b.Run(fmt.Sprintf("n=%d/%s", n, tc.name), func(b *testing.B) {
 				b.ReportAllocs()
 				j := 0
-				for range b.N {
+				for b.Loop() {
 					sink += int(v.Lookup(tc.keys[j]))
 					if j++; j == n {
 						j = 0
@@ -247,7 +247,7 @@ func BenchmarkLookupMap(b *testing.B) {
 		}{{"hit", words}, {"miss", misses}} {
 			b.Run(fmt.Sprintf("n=%d/%s", n, tc.kind), func(b *testing.B) {
 				j := 0
-				for range b.N {
+				for b.Loop() {
 					sink += int(m[string(tc.keys[j])]) // no allocation: compiler optimizes map[string(bytes)]
 					if j++; j == n {
 						j = 0
@@ -267,7 +267,7 @@ func BenchmarkBuild(b *testing.B) {
 	for _, n := range []int{1_400, 10_300, 28_000, 76_100, 206_900} {
 		words := corpus(b, n)
 		b.Run(fmt.Sprintf("%d-vocab", n), func(b *testing.B) {
-			for range b.N {
+			for b.Loop() {
 				v := New(len(words))
 				for _, w := range words {
 					v.AddBytes(w)
@@ -276,7 +276,7 @@ func BenchmarkBuild(b *testing.B) {
 			}
 		})
 		b.Run(fmt.Sprintf("%d-map-o", n), func(b *testing.B) {
-			for range b.N {
+			for b.Loop() {
 				m := make(map[string]WordID, len(words))
 				for i, w := range words {
 					m[string(w)] = WordID(i + 1)
@@ -285,7 +285,7 @@ func BenchmarkBuild(b *testing.B) {
 			}
 		})
 		b.Run(fmt.Sprintf("%d-map-a", n), func(b *testing.B) {
-			for range b.N {
+			for b.Loop() {
 				m := make(map[string]WordID, len(words))
 				for i, w := range words {
 					dummyS = string(w) // Often, there is a separate string conversion
@@ -402,7 +402,7 @@ func heapAlloc() uint64 {
 // time per operation is meaningless here (it includes forced GCs).
 func measureFootprint(b *testing.B, n int, create func() any) {
 	var total int64
-	for range b.N {
+	for b.Loop() {
 		before := heapAlloc()
 		x := create()
 		after := heapAlloc()
@@ -472,7 +472,7 @@ func BenchmarkLoadFactor(b *testing.B) {
 		}{{"hit", present}, {"miss", absent}} {
 			b.Run(name+"/"+tc.kind, func(b *testing.B) {
 				j := 0
-				for range b.N {
+				for b.Loop() {
 					sink += int(v.Lookup(tc.keys[j]))
 					if j++; j == count {
 						j = 0
@@ -481,7 +481,7 @@ func BenchmarkLoadFactor(b *testing.B) {
 			})
 		}
 		b.Run(name+"/build", func(b *testing.B) {
-			for range b.N {
+			for b.Loop() {
 				vb := New(maxHint)
 				for _, w := range present {
 					vb.AddBytes(w)
