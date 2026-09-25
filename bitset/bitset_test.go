@@ -465,3 +465,148 @@ func TestDeleteAllEmpty(t *testing.T) {
 		t.Fatal("DeleteAll() on empty set is not empty")
 	}
 }
+
+func TestOr(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b []uint
+		want string
+	}{
+		{"disjoint", []uint{1, 3}, []uint{2, 4}, "{1,2,3,4}"},
+		{"overlap", []uint{1, 2, 3}, []uint{2, 3, 4}, "{1,2,3,4}"},
+		{"empty a", []uint{}, []uint{1, 2}, "{1,2}"},
+		{"empty b", []uint{1, 2}, []uint{}, "{1,2}"},
+		{"both empty", []uint{}, []uint{}, "{}"},
+		{"b has higher word index", []uint{1}, []uint{200}, "{1,200}"},
+		{"a has higher word index", []uint{200}, []uint{1}, "{1,200}"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			bs := bitset.New(tc.a...)
+			bs.Or(bitset.New(tc.b...))
+			if got := bs.String(); got != tc.want {
+				t.Errorf("Or(%v, %v) = %s, want %s", tc.a, tc.b, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestAnd(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b []uint
+		want string
+	}{
+		{"disjoint", []uint{1, 3}, []uint{2, 4}, "{}"},
+		{"overlap", []uint{1, 2, 3}, []uint{2, 3, 4}, "{2,3}"},
+		{"empty a", []uint{}, []uint{1, 2}, "{}"},
+		{"empty b", []uint{1, 2}, []uint{}, "{}"},
+		{"a superset of b", []uint{1, 2, 3}, []uint{2}, "{2}"},
+		{"a has higher word index, no overlap there", []uint{1, 200}, []uint{1}, "{1}"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			bs := bitset.New(tc.a...)
+			bs.And(bitset.New(tc.b...))
+			want := bitset.New(mustIntersect(tc.a, tc.b)...)
+			if !bs.Equal(want) {
+				t.Errorf("And(%v, %v) = %s, want %s", tc.a, tc.b, bs.String(), want.String())
+			}
+		})
+	}
+}
+
+func TestAndNot(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b []uint
+		want string
+	}{
+		{"disjoint", []uint{1, 3}, []uint{2, 4}, "{1,3}"},
+		{"overlap", []uint{1, 2, 3}, []uint{2, 3, 4}, "{1}"},
+		{"remove all", []uint{1, 2}, []uint{1, 2}, "{}"},
+		{"empty a", []uint{}, []uint{1, 2}, "{}"},
+		{"empty b", []uint{1, 2}, []uint{}, "{1,2}"},
+		{"b has higher word index than a", []uint{1}, []uint{200}, "{1}"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			bs := bitset.New(tc.a...)
+			bs.AndNot(bitset.New(tc.b...))
+			if got := bs.String(); got != tc.want {
+				t.Errorf("AndNot(%v, %v) = %s, want %s", tc.a, tc.b, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestXor(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b []uint
+		want string
+	}{
+		{"disjoint", []uint{1, 3}, []uint{2, 4}, "{1,2,3,4}"},
+		{"overlap", []uint{1, 2, 3}, []uint{2, 3, 4}, "{1,4}"},
+		{"identical", []uint{1, 2, 3}, []uint{1, 2, 3}, "{}"},
+		{"empty a", []uint{}, []uint{1, 2}, "{1,2}"},
+		{"empty b", []uint{1, 2}, []uint{}, "{1,2}"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			bs := bitset.New(tc.a...)
+			bs.Xor(bitset.New(tc.b...))
+			if got := bs.String(); got != tc.want {
+				t.Errorf("Xor(%v, %v) = %s, want %s", tc.a, tc.b, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestNonMutatingVariants(t *testing.T) {
+	a := bitset.New[uint](1, 2, 3)
+	b := bitset.New[uint](2, 3, 4)
+	aBefore := a.String()
+	bBefore := b.String()
+
+	if got, want := a.Union(b).String(), "{1,2,3,4}"; got != want {
+		t.Errorf("Union() = %s, want %s", got, want)
+	}
+	if got, want := a.Intersection(b).String(), "{2,3}"; got != want {
+		t.Errorf("Intersection() = %s, want %s", got, want)
+	}
+	if got, want := a.Difference(b).String(), "{1}"; got != want {
+		t.Errorf("Difference() = %s, want %s", got, want)
+	}
+
+	if a.String() != aBefore {
+		t.Errorf("Union/Intersection/Difference mutated receiver a: %s, want %s", a.String(), aBefore)
+	}
+	if b.String() != bBefore {
+		t.Errorf("Union/Intersection/Difference mutated argument b: %s, want %s", b.String(), bBefore)
+	}
+}
+
+func TestOrXorGrowth(t *testing.T) {
+	bs := bitset.New[uint](1)
+	bs.Or(bitset.New[uint](500))
+	if !bs.Contains(500) {
+		t.Errorf("Or did not grow storage: %s does not contain 500", bs.String())
+	}
+
+	bs2 := bitset.New[uint](1)
+	bs2.Xor(bitset.New[uint](500))
+	if !bs2.Contains(500) {
+		t.Errorf("Xor did not grow storage: %s does not contain 500", bs2.String())
+	}
+}
+
+func mustIntersect(a, b []uint) []uint {
+	var result []uint
+	for _, v := range a {
+		if slices.Contains(b, v) {
+			result = append(result, v)
+		}
+	}
+	return result
+}

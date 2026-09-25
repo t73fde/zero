@@ -206,6 +206,66 @@ func (bs BitSet[V]) String() string {
 	return string(buf)
 }
 
+// ----- Set operations (non-mutating)
+
+// Union returns the union of bs and other.
+func (bs BitSet[V]) Union(other BitSet[V]) BitSet[V] {
+	result := bs.Clone()
+	result.Or(other)
+	return result
+}
+
+// Intersection returns the intersection of bs and other.
+func (bs BitSet[V]) Intersection(other BitSet[V]) BitSet[V] {
+	result := bs.Clone()
+	result.And(other)
+	return result
+}
+
+// Difference returns the difference of bs and other.
+func (bs BitSet[V]) Difference(other BitSet[V]) BitSet[V] {
+	result := bs.Clone()
+	result.AndNot(other)
+	return result
+}
+
+// ----- Set operations (mutating)
+
+// Or sets bs to the union of bs and other (bs |= other).
+func (bs *BitSet[V]) Or(other BitSet[V]) {
+	bs.growWords(len(other.words))
+	for i, w := range other.words {
+		bs.words[i] |= w
+	}
+}
+
+// And sets bs to the intersection of bs and other (bs &= other).
+func (bs *BitSet[V]) And(other BitSet[V]) {
+	n := min(len(bs.words), len(other.words))
+	for i := range n {
+		bs.words[i] &= other.words[i]
+	}
+	for i := n; i < len(bs.words); i++ {
+		bs.words[i] = 0
+	}
+}
+
+// AndNot removes all values of other from bs (bs &^= other).
+func (bs *BitSet[V]) AndNot(other BitSet[V]) {
+	n := min(len(bs.words), len(other.words))
+	for i := range n {
+		bs.words[i] &^= other.words[i]
+	}
+}
+
+// Xor sets bs to the symmetric difference of bs and other (bs ^= other).
+func (bs *BitSet[V]) Xor(other BitSet[V]) {
+	bs.growWords(len(other.words))
+	for i, w := range other.words {
+		bs.words[i] ^= w
+	}
+}
+
 // ----- Memory management
 
 // Clone returns a copy of the bitset.
@@ -238,17 +298,19 @@ func (bs *BitSet[V]) Clip() {
 
 func (bs *BitSet[V]) ensureWord(n V) int {
 	index := int(n / wordSizeBits)
-	if index < len(bs.words) {
-		return index
-	}
-	if index < cap(bs.words) {
-		bs.words = bs.words[:index+1]
-		return index
-	}
+	bs.growWords(index + 1)
+	return index
+}
 
-	newCap := max(index+1, 2*cap(bs.words))
-	newWords := make([]word, index+1, newCap)
+func (bs *BitSet[V]) growWords(n int) {
+	if n <= len(bs.words) {
+		return
+	}
+	if n <= cap(bs.words) {
+		bs.words = bs.words[:n]
+		return
+	}
+	newWords := make([]word, n, max(n, 2*cap(bs.words)))
 	copy(newWords, bs.words)
 	bs.words = newWords
-	return index
 }
