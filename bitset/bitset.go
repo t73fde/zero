@@ -25,15 +25,15 @@ import (
 	"strconv"
 )
 
-// BitSet is a set of non-negative integer values.
-// Every integer maps to a single bit.
-type BitSet struct {
-	words []word
-}
-
 // Value is a type that can be stored in a BitSet.
 type Value interface {
 	~uint | ~uint8 | ~uint16 | ~uint32
+}
+
+// BitSet is a set of non-negative integer values.
+// Every integer maps to a single bit.
+type BitSet[V Value] struct {
+	words []word
 }
 
 type word = uint
@@ -46,12 +46,12 @@ const (
 // ----- Constructors
 
 // New returns a BitSet containing all given values.
-func New[T Value](values ...T) BitSet {
-	var bs BitSet
+func New[V Value](values ...V) BitSet[V] {
+	var bs BitSet[V]
 	if len(values) == 0 {
 		return bs
 	}
-	bs.EnsureBit(uint(slices.Max(values)))
+	bs.EnsureBit(slices.Max(values))
 	for _, n := range values {
 		index := uint(n) / wordSizeBits
 		bs.words[index] |= word(1) << (uint(n) & wordMask)
@@ -60,10 +60,10 @@ func New[T Value](values ...T) BitSet {
 }
 
 // Collect returns a BitSet containing all values produced by seq.
-func Collect[T Value](seq iter.Seq[T]) BitSet {
-	var bs BitSet
+func Collect[V Value](seq iter.Seq[V]) BitSet[V] {
+	var bs BitSet[V]
 	for n := range seq {
-		bs.Insert(uint(n))
+		bs.Insert(n)
 	}
 	return bs
 }
@@ -71,12 +71,12 @@ func Collect[T Value](seq iter.Seq[T]) BitSet {
 // ----- Basic set operations
 
 // Insert a non-negative integer to the set.
-func (bs *BitSet) Insert(n uint) {
+func (bs *BitSet[V]) Insert(n V) {
 	bs.words[bs.ensureWord(n)] |= word(1) << (n & wordMask)
 }
 
 // Delete a non-negative integer from the set.
-func (bs *BitSet) Delete(n uint) {
+func (bs *BitSet[V]) Delete(n V) {
 	index := n / wordSizeBits
 	if len(bs.words) <= int(index) {
 		return
@@ -85,14 +85,14 @@ func (bs *BitSet) Delete(n uint) {
 }
 
 // DeleteAll removes all values from the set while retaining the allocated storage.
-func (bs *BitSet) DeleteAll() {
+func (bs *BitSet[V]) DeleteAll() {
 	clear(bs.words)
 }
 
 // ----- Queries
 
 // Contains reports whether a non-negative integer is in the set.
-func (bs BitSet) Contains(n uint) bool {
+func (bs BitSet[V]) Contains(n V) bool {
 	index := n / wordSizeBits
 	if len(bs.words) <= int(index) {
 		return false
@@ -101,7 +101,7 @@ func (bs BitSet) Contains(n uint) bool {
 }
 
 // Count returns the number of values in the set.
-func (bs BitSet) Count() int {
+func (bs BitSet[V]) Count() int {
 	count := 0
 	for _, w := range bs.words {
 		count += bits.OnesCount(w)
@@ -110,7 +110,7 @@ func (bs BitSet) Count() int {
 }
 
 // IsEmpty reports whether the set contains no values.
-func (bs BitSet) IsEmpty() bool {
+func (bs BitSet[V]) IsEmpty() bool {
 	for _, w := range bs.words {
 		if w != 0 {
 			return false
@@ -121,10 +121,10 @@ func (bs BitSet) IsEmpty() bool {
 
 // Min returns the smallest value in the BitSet.
 // It reports false if the BitSet is empty.
-func (bs BitSet) Min() (uint, bool) {
+func (bs BitSet[V]) Min() (V, bool) {
 	for i, w := range bs.words {
 		if w != 0 {
-			return uint(i)*wordSizeBits + uint(bits.TrailingZeros(uint(w))), true
+			return V(i)*wordSizeBits + V(bits.TrailingZeros(uint(w))), true
 		}
 	}
 	return 0, false
@@ -132,18 +132,18 @@ func (bs BitSet) Min() (uint, bool) {
 
 // Max returns the largest value in the BitSet.
 // It reports false if the BitSet is empty.
-func (bs BitSet) Max() (uint, bool) {
+func (bs BitSet[V]) Max() (V, bool) {
 	for i := len(bs.words) - 1; i >= 0; i-- {
 		if w := bs.words[i]; w != 0 {
-			return uint(i)*wordSizeBits +
-				(wordSizeBits - 1 - uint(bits.LeadingZeros(uint(w)))), true
+			return V(i)*wordSizeBits +
+				(wordSizeBits - 1 - V(bits.LeadingZeros(uint(w)))), true
 		}
 	}
 	return 0, false
 }
 
 // Equal reports whether bs and other contain the same values.
-func (bs BitSet) Equal(other BitSet) bool {
+func (bs BitSet[V]) Equal(other BitSet[V]) bool {
 	i := len(bs.words) - 1
 	j := len(other.words) - 1
 
@@ -172,12 +172,12 @@ func (bs BitSet) Equal(other BitSet) bool {
 // All returns an iterator over all values in the set in ascending order.
 //
 // The iterator does not modify the BitSet.
-func (bs BitSet) All() iter.Seq[uint] {
-	return func(yield func(uint) bool) {
-		base := uint(0)
+func (bs BitSet[V]) All() iter.Seq[V] {
+	return func(yield func(V) bool) {
+		base := V(0)
 		for _, w := range bs.words {
 			for w != 0 {
-				pos := uint(bits.TrailingZeros(w))
+				pos := V(bits.TrailingZeros(w))
 				if !yield(base + pos) {
 					return
 				}
@@ -189,7 +189,7 @@ func (bs BitSet) All() iter.Seq[uint] {
 }
 
 // String returns the set in ascending order as "{1,2,7}".
-func (bs BitSet) String() string {
+func (bs BitSet[V]) String() string {
 	buf := make([]byte, 0, 32)
 	buf = append(buf, '{')
 
@@ -209,20 +209,20 @@ func (bs BitSet) String() string {
 // ----- Memory management
 
 // Clone returns a copy of the bitset.
-func (bs BitSet) Clone() BitSet {
+func (bs BitSet[V]) Clone() BitSet[V] {
 	words := make([]word, len(bs.words))
 	copy(words, bs.words)
-	return BitSet{words: words}
+	return BitSet[V]{words: words}
 }
 
 // EnsureBit ensures that n can be inserted without further allocation.
 // It does not insert n.
-func (bs *BitSet) EnsureBit(n uint) {
+func (bs *BitSet[V]) EnsureBit(n V) {
 	_ = bs.ensureWord(n)
 }
 
 // Clip reduces the BitSet storage to the minimum size needed for its values.
-func (bs *BitSet) Clip() {
+func (bs *BitSet[V]) Clip() {
 	i := len(bs.words)
 	for i > 0 && bs.words[i-1] == 0 {
 		i--
@@ -236,7 +236,7 @@ func (bs *BitSet) Clip() {
 
 // ----- internal helpers
 
-func (bs *BitSet) ensureWord(n uint) int {
+func (bs *BitSet[V]) ensureWord(n V) int {
 	index := int(n / wordSizeBits)
 	if index < len(bs.words) {
 		return index

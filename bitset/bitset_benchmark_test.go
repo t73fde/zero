@@ -21,7 +21,8 @@ import (
 
 var benchBool bool
 var benchInt int
-var benchBitSet bitset.BitSet
+var benchBitSet bitset.BitSet[uint]
+var benchBitSet8 bitset.BitSet[uint8]
 
 func BenchmarkBitSetHierarchy(b *testing.B) {
 	base := bitset.New(uint('a'), 'b', 'c')
@@ -136,7 +137,7 @@ func BenchmarkBitSetSparseClone(b *testing.B) {
 
 func BenchmarkBitSetClip(b *testing.B) {
 	for b.Loop() {
-		var bs bitset.BitSet
+		var bs bitset.BitSet[uint]
 		bs.EnsureBit(1_000_000)
 		bs.Insert(1)
 		bs.Clip()
@@ -144,14 +145,14 @@ func BenchmarkBitSetClip(b *testing.B) {
 }
 
 func BenchmarkBitSetASCIIClone(b *testing.B) {
-	var base bitset.BitSet
-	for i := uint(32); i < 128; i++ {
+	var base bitset.BitSet[uint8]
+	for i := uint8(32); i < 128; i++ {
 		base.Insert(i)
 	}
 
 	b.ResetTimer()
 	for b.Loop() {
-		benchBitSet = base.Clone()
+		benchBitSet8 = base.Clone()
 	}
 }
 

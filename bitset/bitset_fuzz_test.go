@@ -39,7 +39,7 @@ func FuzzBitSetOperations(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		const maxValue = 1 << 18
 
-		var bs bitset.BitSet
+		var bs bitset.BitSet[uint]
 		ref := make(map[uint]struct{})
 
 		for i := 0; i+3 < len(data); i += 4 {
@@ -83,7 +83,7 @@ func containsRef(ref map[uint]struct{}, n uint) bool {
 	return ok
 }
 
-func checkBitSetInvariant(t *testing.T, bs bitset.BitSet, ref map[uint]struct{}) {
+func checkBitSetInvariant(t *testing.T, bs bitset.BitSet[uint], ref map[uint]struct{}) {
 	t.Helper()
 
 	// Cardinality must match.

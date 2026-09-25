@@ -80,7 +80,7 @@ func TestNewCollectByte(t *testing.T) {
 }
 
 func TestInsertAndContains(t *testing.T) {
-	var bs bitset.BitSet
+	var bs bitset.BitSet[uint]
 
 	tests := []uint{
 		0,
@@ -123,7 +123,7 @@ func TestInsertAndContains(t *testing.T) {
 }
 
 func TestInsertDuplicate(t *testing.T) {
-	var bs bitset.BitSet
+	var bs bitset.BitSet[byte]
 	const val = 42
 
 	bs.Insert(val)
@@ -138,13 +138,13 @@ func TestInsertDuplicate(t *testing.T) {
 	}
 }
 func TestInsertGrowth(t *testing.T) {
-	var bs bitset.BitSet
+	var bs bitset.BitSet[uint16]
 
-	for i := range uint(10000) {
+	for i := range uint16(10000) {
 		bs.Insert(i)
 	}
 
-	for i := range uint(10000) {
+	for i := range uint16(10000) {
 		if !bs.Contains(i) {
 			t.Fatalf("missing bit %d after growth", i)
 		}
@@ -152,9 +152,9 @@ func TestInsertGrowth(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	var bs bitset.BitSet
+	var bs bitset.BitSet[uint32]
 
-	values := []uint{
+	values := []uint32{
 		0,
 		1,
 		7,
@@ -184,7 +184,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestDeleteNonExisting(t *testing.T) {
-	var bs bitset.BitSet
+	var bs bitset.BitSet[uint16]
 
 	bs.Delete(0)
 	bs.Delete(1000)
@@ -259,7 +259,7 @@ func TestIsEmpty(t *testing.T) {
 }
 
 func TestIsEmptyWithAllocatedWords(t *testing.T) {
-	bs := bitset.BitSet{}
+	bs := bitset.BitSet[uint]{}
 	bs.EnsureBit(10000)
 
 	if !bs.IsEmpty() {
@@ -329,7 +329,7 @@ func TestEqual(t *testing.T) {
 }
 
 func TestEqualIgnoresTrailingZeroWords(t *testing.T) {
-	var a, b bitset.BitSet
+	var a, b bitset.BitSet[uint16]
 
 	a.Insert(1)
 
@@ -353,7 +353,7 @@ func TestAll(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Run(fmt.Sprint(tc.vals), func(t *testing.T) {
-			var bs bitset.BitSet
+			var bs bitset.BitSet[uint]
 			for _, n := range tc.vals {
 				bs.Insert(n)
 			}
@@ -369,7 +369,7 @@ func TestAll(t *testing.T) {
 }
 
 func TestAllBreak(t *testing.T) {
-	var bs bitset.BitSet
+	var bs bitset.BitSet[uint]
 	for _, n := range []uint{1, 2, 3, 5, 7, 11} {
 		bs.Insert(n)
 	}
@@ -414,7 +414,7 @@ func TestString(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			var bs bitset.BitSet
+			var bs bitset.BitSet[uint]
 			for _, n := range tc.vals {
 				bs.Insert(n)
 			}
@@ -449,10 +449,19 @@ func TestCloneIndependent(t *testing.T) {
 }
 
 func TestCloneEmpty(t *testing.T) {
-	var bs bitset.BitSet
+	var bs bitset.BitSet[uint32]
 
 	clone := bs.Clone()
 	if !clone.Equal(bs) {
 		t.Fatal("Clone() of empty BitSet is not equal")
+	}
+}
+
+func TestDeleteAllEmpty(t *testing.T) {
+	var bs bitset.BitSet[uint]
+
+	bs.DeleteAll()
+	if !bs.IsEmpty() {
+		t.Fatal("DeleteAll() on empty set is not empty")
 	}
 }

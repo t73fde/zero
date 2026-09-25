@@ -44,17 +44,8 @@ func TestDeleteAll(t *testing.T) {
 	}
 }
 
-func TestDeleteAllEmpty(t *testing.T) {
-	var bs BitSet
-
-	bs.DeleteAll()
-	if !bs.IsEmpty() {
-		t.Fatal("DeleteAll() on empty set is not empty")
-	}
-}
-
 func TestEnsureBit(t *testing.T) {
-	var bs BitSet
+	var bs BitSet[uint16]
 
 	bs.EnsureBit(1000)
 	index := int(1000 / wordSizeBits)
@@ -76,7 +67,7 @@ func TestEnsureBit(t *testing.T) {
 }
 
 func TestClipRemovesTrailingWords(t *testing.T) {
-	var bs BitSet
+	var bs BitSet[uint16]
 
 	bs.EnsureBit(10000)
 	bs.Clip()
