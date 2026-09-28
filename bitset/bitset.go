@@ -229,6 +229,28 @@ func (bs BitSet[V]) Difference(other BitSet[V]) BitSet[V] {
 	return result
 }
 
+// Delta returns the values that are only in bs and the values that are only
+// in other. Neither bs nor other is modified; the results do not share
+// storage with them.
+//
+// Example: removed, added := old.Delta(new)
+func (bs BitSet[V]) Delta(other BitSet[V]) (onlyBs, onlyOther BitSet[V]) {
+	a, b := bs.words, other.words
+	n := min(len(a), len(b))
+
+	ra := make([]word, len(a))
+	rb := make([]word, len(b))
+
+	for i := range n {
+		ra[i] = a[i] &^ b[i]
+		rb[i] = b[i] &^ a[i]
+	}
+	copy(ra[n:], a[n:])
+	copy(rb[n:], b[n:])
+
+	return BitSet[V]{words: ra}, BitSet[V]{words: rb}
+}
+
 // ----- Set operations (mutating)
 
 // Or sets bs to the union of bs and other (bs |= other).

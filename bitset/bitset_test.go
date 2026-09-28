@@ -610,3 +610,17 @@ func mustIntersect(a, b []uint) []uint {
 	}
 	return result
 }
+
+func TestDelta(t *testing.T) {
+	a := bitset.New[uint](1, 2, 3, 100)
+	b := bitset.New[uint](3, 4, 200)
+
+	onlyA, onlyB := a.Delta(b)
+
+	if got, want := slices.Collect(onlyA.Values()), []uint{1, 2, 100}; !slices.Equal(got, want) {
+		t.Errorf("onlyA = %v, want %v", got, want)
+	}
+	if got, want := slices.Collect(onlyB.Values()), []uint{4, 200}; !slices.Equal(got, want) {
+		t.Errorf("onlyB = %v, want %v", got, want)
+	}
+}
