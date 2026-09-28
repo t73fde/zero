@@ -15,6 +15,7 @@ package bitset_test
 
 import (
 	"fmt"
+	"maps"
 	"math/rand/v2"
 	"slices"
 	"testing"
@@ -610,6 +611,189 @@ func mustIntersect(a, b []uint) []uint {
 		}
 	}
 	return result
+}
+
+func TestSymmetricDifference(t *testing.T) {
+	t.Parallel()
+	testcases := []struct {
+		name string
+		a, b []uint
+		want []uint
+	}{
+		{"both empty", nil, nil, nil},
+		{"a empty", nil, []uint{5, 70}, []uint{5, 70}},
+		{"b empty", []uint{5, 70}, nil, []uint{5, 70}},
+		{"identical", []uint{0, 63, 64, 130}, []uint{0, 63, 64, 130}, nil},
+		{"disjoint interleaved", []uint{0, 2, 4}, []uint{1, 3, 5}, []uint{0, 1, 2, 3, 4, 5}},
+		{"disjoint, a below b", []uint{1, 2}, []uint{200, 300}, []uint{1, 2, 200, 300}},
+		{"disjoint, b below a", []uint{200, 300}, []uint{1, 2}, []uint{1, 2, 200, 300}},
+		{"overlap", []uint{1, 2, 3, 100}, []uint{3, 4, 200}, []uint{1, 2, 4, 100, 200}},
+		{"a subset of b", []uint{2, 4}, []uint{1, 2, 3, 4}, []uint{1, 3}},
+		{"b subset of a", []uint{1, 2, 3, 4}, []uint{2, 4}, []uint{1, 3}},
+		{"a longer", []uint{1, 500}, []uint{1}, []uint{500}},
+		{"b longer", []uint{1}, []uint{1, 500}, []uint{500}},
+		{"word boundaries", []uint{31, 32, 63, 64}, []uint{32, 64, 65}, []uint{31, 63, 65}},
+		{"only zero", []uint{0}, nil, []uint{0}},
+		{"zero in both", []uint{0, 5}, []uint{0, 6}, []uint{5, 6}},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			a, b := bitset.New(tc.a...), bitset.New(tc.b...)
+			want := bitset.New(tc.want...)
+
+			if got := a.SymmetricDifference(b); !got.Equal(want) {
+				t.Errorf("%v ^ %v = %v, want %v", a, b, got, want)
+			}
+			// The operation is symmetric.
+			if got := b.SymmetricDifference(a); !got.Equal(want) {
+				t.Errorf("%v ^ %v = %v, want %v", b, a, got, want)
+			}
+		})
+	}
+}
+
+func TestSymmetricDifferenceZeroValue(t *testing.T) {
+	t.Parallel()
+	var zero bitset.BitSet[uint]
+	set := bitset.New[uint](3, 70)
+
+	if got := zero.SymmetricDifference(set); !got.Equal(set) {
+		t.Errorf("zero ^ set = %v, want %v", got, set)
+	}
+	if got := set.SymmetricDifference(zero); !got.Equal(set) {
+		t.Errorf("set ^ zero = %v, want %v", got, set)
+	}
+	if got := zero.SymmetricDifference(zero); !got.IsEmpty() {
+		t.Errorf("zero ^ zero = %v, want empty", got)
+	}
+}
+
+func TestSymmetricDifferenceSameSet(t *testing.T) {
+	t.Parallel()
+	a := bitset.New[uint](1, 64, 200)
+
+	if got := a.SymmetricDifference(a); !got.IsEmpty() {
+		t.Errorf("a ^ a = %v, want empty", got)
+	}
+}
+
+func TestSymmetricDifferenceValueTypes(t *testing.T) {
+	t.Parallel()
+
+	a8, b8 := bitset.New[uint8](1, 2, 255), bitset.New[uint8](2, 3)
+	if got, want := a8.SymmetricDifference(b8), bitset.New[uint8](1, 3, 255); !got.Equal(want) {
+		t.Errorf("uint8: got %v, want %v", got, want)
+	}
+
+	a32, b32 := bitset.New[uint32](0, 1<<20), bitset.New[uint32](1<<20, 1<<21)
+	if got, want := a32.SymmetricDifference(b32), bitset.New[uint32](0, 1<<21); !got.Equal(want) {
+		t.Errorf("uint32: got %v, want %v", got, want)
+	}
+}
+
+func TestSymmetricDifferenceOperandsUnchanged(t *testing.T) {
+	t.Parallel()
+	// Both orders of length, since the implementation may swap the operands.
+	for _, tc := range []struct{ a, b []uint }{
+		{[]uint{1, 2, 3}, []uint{2, 500}},
+		{[]uint{2, 500}, []uint{1, 2, 3}},
+	} {
+		a, b := bitset.New(tc.a...), bitset.New(tc.b...)
+		aOrig, bOrig := a.Clone(), b.Clone()
+
+		_ = a.SymmetricDifference(b)
+
+		if !a.Equal(aOrig) || !b.Equal(bOrig) {
+			t.Errorf("operands modified: a=%v (was %v), b=%v (was %v)", a, aOrig, b, bOrig)
+		}
+	}
+}
+
+func TestSymmetricDifferenceNoSharedStorage(t *testing.T) {
+	t.Parallel()
+	// Both orders of length: the longer operand is copied, not returned.
+	for _, tc := range []struct{ a, b []uint }{
+		{[]uint{1, 2, 300}, []uint{2}},
+		{[]uint{2}, []uint{1, 2, 300}},
+	} {
+		a, b := bitset.New(tc.a...), bitset.New(tc.b...)
+		aOrig, bOrig := a.Clone(), b.Clone()
+
+		got := a.SymmetricDifference(b)
+		want := got.Clone()
+
+		// Mutating the result must not affect the operands.
+		got.Insert(1000)
+		got.Delete(1)
+		if !a.Equal(aOrig) || !b.Equal(bOrig) {
+			t.Errorf("result shares storage with an operand: a=%v, b=%v", a, b)
+		}
+
+		// Mutating the operands must not affect the result.
+		got = a.SymmetricDifference(b)
+		a.Insert(900)
+		b.Insert(901)
+		if !got.Equal(want) {
+			t.Errorf("result changed after operand modification: %v, want %v", got, want)
+		}
+	}
+}
+
+func TestSymmetricDifferenceProperties(t *testing.T) {
+	t.Parallel()
+	rng := rand.New(rand.NewPCG(11, 12))
+
+	random := func() (bitset.BitSet[uint], map[uint]struct{}) {
+		var bs bitset.BitSet[uint]
+		ref := make(map[uint]struct{})
+		for range rng.IntN(20) {
+			n := uint(rng.IntN(300))
+			bs.Insert(n)
+			ref[n] = struct{}{}
+		}
+		return bs, ref
+	}
+
+	for range 500 {
+		a, refA := random()
+		b, refB := random()
+
+		got := a.SymmetricDifference(b)
+
+		// Reference: values that are in exactly one of both maps.
+		var want []uint
+		for n := range maps.Keys(refA) {
+			if _, ok := refB[n]; !ok {
+				want = append(want, n)
+			}
+		}
+		for n := range maps.Keys(refB) {
+			if _, ok := refA[n]; !ok {
+				want = append(want, n)
+			}
+		}
+		slices.Sort(want)
+		if gotValues := slices.Collect(got.Values()); !slices.Equal(gotValues, want) {
+			t.Fatalf("a=%v b=%v: got %v, want %v", a, b, gotValues, want)
+		}
+
+		// Consistency with the mutating variant and with Delta.
+		xor := a.Clone()
+		xor.Xor(b)
+		if !got.Equal(xor) {
+			t.Fatalf("a=%v b=%v: SymmetricDifference %v != Xor %v", a, b, got, xor)
+		}
+		onlyA, onlyB := a.Delta(b)
+		if !got.Equal(onlyA.Union(onlyB)) {
+			t.Fatalf("a=%v b=%v: SymmetricDifference %v != union of Delta %v, %v", a, b, got, onlyA, onlyB)
+		}
+
+		// Involution: (a ^ b) ^ b == a.
+		if back := got.SymmetricDifference(b); !back.Equal(a) {
+			t.Fatalf("a=%v b=%v: (a^b)^b = %v, want a", a, b, back)
+		}
+	}
 }
 
 func TestDeltaBasic(t *testing.T) {

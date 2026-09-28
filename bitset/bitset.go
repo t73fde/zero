@@ -229,6 +229,20 @@ func (bs BitSet[V]) Difference(other BitSet[V]) BitSet[V] {
 	return result
 }
 
+// SymmetricDifference returns the values that are in exactly one of bs and other.
+func (bs BitSet[V]) SymmetricDifference(other BitSet[V]) BitSet[V] {
+	a, b := bs.words, other.words
+	if len(a) < len(b) {
+		a, b = b, a // the operation is symmetric: let a be the longer operand
+	}
+	words := make([]word, len(a))
+	copy(words, a)
+	for i, w := range b {
+		words[i] ^= w
+	}
+	return BitSet[V]{words: words}
+}
+
 // Delta returns the values that are only in bs and the values that are only
 // in other. Neither bs nor other is modified; the results do not share
 // storage with them.
