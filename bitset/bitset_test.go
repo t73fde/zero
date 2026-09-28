@@ -39,11 +39,11 @@ func TestNewAndCollect(t *testing.T) {
 		vals []uint
 		exp  string
 	}{
-		{name: "nil", vals: nil, exp: "{}"},
-		{name: "empty", vals: []uint{}, exp: "{}"},
-		{name: "values", vals: []uint{1, 2, 63, 64, 1000}, exp: "{1,2,63,64,1000}"},
-		{name: "duplicates", vals: []uint{1, 1, 2, 2, 1}, exp: "{1,2}"},
-		{name: "sparse values", vals: []uint{1, 10000, 100000}, exp: "{1,10000,100000}"},
+		{name: "nil", vals: nil, exp: ""},
+		{name: "empty", vals: []uint{}, exp: ""},
+		{name: "values", vals: []uint{1, 2, 63, 64, 1000}, exp: "1 2 63 64 1000"},
+		{name: "duplicates", vals: []uint{1, 1, 2, 2, 1}, exp: "1 2"},
+		{name: "sparse values", vals: []uint{1, 10000, 100000}, exp: "1 10000 100000"},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -68,7 +68,7 @@ func TestNewAndCollect(t *testing.T) {
 
 func TestNewCollectByte(t *testing.T) {
 	vals := []byte{0, 7, 8, 255}
-	exp := "{0,7,8,255}"
+	exp := "0 7 8 255"
 
 	bs := bitset.New(vals...)
 	if got := bs.String(); got != exp {
@@ -407,11 +407,11 @@ func TestString(t *testing.T) {
 		vals []uint
 		exp  string
 	}{
-		{"empty", nil, "{}"},
-		{"single", []uint{5}, "{5}"},
-		{"multiple", []uint{1, 3, 10}, "{1,3,10}"},
-		{"word boundary", []uint{63, 64}, "{63,64}"},
-		{"empty words", []uint{1000}, "{1000}"},
+		{"empty", nil, ""},
+		{"single", []uint{5}, "5"},
+		{"multiple", []uint{1, 3, 10}, "1 3 10"},
+		{"word boundary", []uint{63, 64}, "63 64"},
+		{"empty words", []uint{1000}, "1000"},
 	}
 
 	for _, tc := range testcases {
@@ -442,10 +442,10 @@ func TestCloneIndependent(t *testing.T) {
 	clone.Insert(1000)
 	clone.Delete(1)
 
-	if got, exp := clone.String(), "{64,1000}"; got != exp {
+	if got, exp := clone.String(), "64 1000"; got != exp {
 		t.Fatalf("clone = %v, exp %v", got, exp)
 	}
-	if got, exp := original.String(), "{1,64}"; got != exp {
+	if got, exp := original.String(), "1 64"; got != exp {
 		t.Fatalf("original = %v, exp %v", got, exp)
 	}
 }
@@ -474,13 +474,13 @@ func TestOr(t *testing.T) {
 		a, b []uint
 		want string
 	}{
-		{"disjoint", []uint{1, 3}, []uint{2, 4}, "{1,2,3,4}"},
-		{"overlap", []uint{1, 2, 3}, []uint{2, 3, 4}, "{1,2,3,4}"},
-		{"empty a", []uint{}, []uint{1, 2}, "{1,2}"},
-		{"empty b", []uint{1, 2}, []uint{}, "{1,2}"},
-		{"both empty", []uint{}, []uint{}, "{}"},
-		{"b has higher word index", []uint{1}, []uint{200}, "{1,200}"},
-		{"a has higher word index", []uint{200}, []uint{1}, "{1,200}"},
+		{"disjoint", []uint{1, 3}, []uint{2, 4}, "1 2 3 4"},
+		{"overlap", []uint{1, 2, 3}, []uint{2, 3, 4}, "1 2 3 4"},
+		{"empty a", []uint{}, []uint{1, 2}, "1 2"},
+		{"empty b", []uint{1, 2}, []uint{}, "1 2"},
+		{"both empty", []uint{}, []uint{}, ""},
+		{"b has higher word index", []uint{1}, []uint{200}, "1 200"},
+		{"a has higher word index", []uint{200}, []uint{1}, "1 200"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -497,14 +497,13 @@ func TestAnd(t *testing.T) {
 	tests := []struct {
 		name string
 		a, b []uint
-		want string
 	}{
-		{"disjoint", []uint{1, 3}, []uint{2, 4}, "{}"},
-		{"overlap", []uint{1, 2, 3}, []uint{2, 3, 4}, "{2,3}"},
-		{"empty a", []uint{}, []uint{1, 2}, "{}"},
-		{"empty b", []uint{1, 2}, []uint{}, "{}"},
-		{"a superset of b", []uint{1, 2, 3}, []uint{2}, "{2}"},
-		{"a has higher word index, no overlap there", []uint{1, 200}, []uint{1}, "{1}"},
+		{"disjoint", []uint{1, 3}, []uint{2, 4}},
+		{"overlap", []uint{1, 2, 3}, []uint{2, 3, 4}},
+		{"empty a", []uint{}, []uint{1, 2}},
+		{"empty b", []uint{1, 2}, []uint{}},
+		{"a superset of b", []uint{1, 2, 3}, []uint{2}},
+		{"a has higher word index, no overlap there", []uint{1, 200}, []uint{1}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -524,12 +523,12 @@ func TestAndNot(t *testing.T) {
 		a, b []uint
 		want string
 	}{
-		{"disjoint", []uint{1, 3}, []uint{2, 4}, "{1,3}"},
-		{"overlap", []uint{1, 2, 3}, []uint{2, 3, 4}, "{1}"},
-		{"remove all", []uint{1, 2}, []uint{1, 2}, "{}"},
-		{"empty a", []uint{}, []uint{1, 2}, "{}"},
-		{"empty b", []uint{1, 2}, []uint{}, "{1,2}"},
-		{"b has higher word index than a", []uint{1}, []uint{200}, "{1}"},
+		{"disjoint", []uint{1, 3}, []uint{2, 4}, "1 3"},
+		{"overlap", []uint{1, 2, 3}, []uint{2, 3, 4}, "1"},
+		{"remove all", []uint{1, 2}, []uint{1, 2}, ""},
+		{"empty a", []uint{}, []uint{1, 2}, ""},
+		{"empty b", []uint{1, 2}, []uint{}, "1 2"},
+		{"b has higher word index than a", []uint{1}, []uint{200}, "1"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -548,11 +547,11 @@ func TestXor(t *testing.T) {
 		a, b []uint
 		want string
 	}{
-		{"disjoint", []uint{1, 3}, []uint{2, 4}, "{1,2,3,4}"},
-		{"overlap", []uint{1, 2, 3}, []uint{2, 3, 4}, "{1,4}"},
-		{"identical", []uint{1, 2, 3}, []uint{1, 2, 3}, "{}"},
-		{"empty a", []uint{}, []uint{1, 2}, "{1,2}"},
-		{"empty b", []uint{1, 2}, []uint{}, "{1,2}"},
+		{"disjoint", []uint{1, 3}, []uint{2, 4}, "1 2 3 4"},
+		{"overlap", []uint{1, 2, 3}, []uint{2, 3, 4}, "1 4"},
+		{"identical", []uint{1, 2, 3}, []uint{1, 2, 3}, ""},
+		{"empty a", []uint{}, []uint{1, 2}, "1 2"},
+		{"empty b", []uint{1, 2}, []uint{}, "1 2"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -571,13 +570,13 @@ func TestNonMutatingVariants(t *testing.T) {
 	aBefore := a.String()
 	bBefore := b.String()
 
-	if got, want := a.Union(b).String(), "{1,2,3,4}"; got != want {
+	if got, want := a.Union(b).String(), "1 2 3 4"; got != want {
 		t.Errorf("Union() = %s, want %s", got, want)
 	}
-	if got, want := a.Intersection(b).String(), "{2,3}"; got != want {
+	if got, want := a.Intersection(b).String(), "2 3"; got != want {
 		t.Errorf("Intersection() = %s, want %s", got, want)
 	}
-	if got, want := a.Difference(b).String(), "{1}"; got != want {
+	if got, want := a.Difference(b).String(), "1"; got != want {
 		t.Errorf("Difference() = %s, want %s", got, want)
 	}
 

@@ -36,8 +36,8 @@ func TestDeleteAll(t *testing.T) {
 	if got, ok := bs.Max(); ok {
 		t.Fatalf("DeleteAll(): Max() = (%d, true), want (_, false)", got)
 	}
-	if got := bs.String(); got != "{}" {
-		t.Fatalf("DeleteAll(): String() = %q, want %q", got, "{}")
+	if got := bs.String(); got != "" {
+		t.Fatalf("DeleteAll(): String() = %q, want %q", got, "")
 	}
 	if cap(bs.words) != capBefore {
 		t.Fatalf("DeleteAll(): capacity changed from %d to %d", capBefore, cap(bs.words))
