@@ -91,6 +91,24 @@ func (bs *BitSet[V]) DeleteAll() {
 	clear(bs.words)
 }
 
+// Pop removes and returns some containing value in the bitset.
+// It returns false if the roster is empty.
+func (bs *BitSet[V]) Pop() (V, bool) {
+	for i := len(bs.words) - 1; i >= 0; i-- {
+		w := bs.words[i]
+		if w == 0 {
+			continue
+		}
+
+		j := bits.Len(w) - 1
+		bs.words[i] = w &^ (word(1) << j)
+		return V(uint(i*bits.UintSize + j)), true
+	}
+
+	var zero V
+	return zero, false
+}
+
 // ----- Queries
 
 // Contains reports whether a non-negative integer is in the set.

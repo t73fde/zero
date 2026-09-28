@@ -199,6 +199,68 @@ func TestDeleteNonExisting(t *testing.T) {
 	}
 }
 
+func testPop[V bitset.Value](t *testing.T, values ...V) {
+	t.Helper()
+
+	bs := bitset.New(values...)
+
+	want := make(map[V]bool, len(values))
+	for _, v := range values {
+		want[v] = true
+	}
+
+	for len(want) > 0 {
+		v, ok := bs.Pop()
+		if !ok {
+			t.Fatal("Pop returned false for non-empty bitset")
+		}
+		if !want[v] {
+			t.Fatalf("Pop returned unexpected or duplicate value %v", v)
+		}
+		delete(want, v)
+
+		if bs.Contains(v) {
+			t.Fatalf("bitset still contains popped value %v", v)
+		}
+	}
+
+	if !bs.IsEmpty() {
+		t.Fatal("bitset is not empty after popping all values")
+	}
+}
+
+func TestBitSetPopTypes(t *testing.T) {
+	t.Run("uint8", func(t *testing.T) {
+		testPop(t, uint8(0), uint8(1), uint8(127), uint8(255))
+	})
+
+	t.Run("uint16", func(t *testing.T) {
+		testPop(t, uint16(0), uint16(1), uint16(255), uint16(65535))
+	})
+
+	t.Run("uint32", func(t *testing.T) {
+		testPop(t, uint32(0), uint32(1), uint32(1<<16), ^uint32(0))
+	})
+}
+
+func TestBitSetPop2(t *testing.T) {
+	t.Run("uint", func(t *testing.T) {
+		testPop(t, uint(0), 1, 63, 64, 127, 1000)
+	})
+
+	t.Run("uint8", func(t *testing.T) {
+		testPop(t, uint8(0), 1, 127, 255)
+	})
+
+	t.Run("uint16", func(t *testing.T) {
+		testPop(t, uint16(0), 1, 255, 256, 65535)
+	})
+
+	t.Run("uint32", func(t *testing.T) {
+		testPop(t, uint32(0), 1, 1<<16, 1<<31, ^uint32(0))
+	})
+}
+
 func TestCount(t *testing.T) {
 	testcases := []struct {
 		name string
