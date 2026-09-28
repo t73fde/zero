@@ -15,6 +15,7 @@ package bitset_test
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"slices"
 	"testing"
 
@@ -611,7 +612,7 @@ func mustIntersect(a, b []uint) []uint {
 	return result
 }
 
-func TestDelta(t *testing.T) {
+func TestDeltaBasic(t *testing.T) {
 	a := bitset.New[uint](1, 2, 3, 100)
 	b := bitset.New[uint](3, 4, 200)
 
@@ -623,4 +624,105 @@ func TestDelta(t *testing.T) {
 	if got, want := slices.Collect(onlyB.Values()), []uint{4, 200}; !slices.Equal(got, want) {
 		t.Errorf("onlyB = %v, want %v", got, want)
 	}
+}
+
+func TestDelta(t *testing.T) {
+	t.Parallel()
+	testcases := []struct {
+		name         string
+		a, b         []uint
+		onlyA, onlyB []uint
+	}{
+		{"basic", []uint{1, 2, 3, 100}, []uint{3, 4, 200}, []uint{1, 2, 100}, []uint{4, 200}},
+		{"a longer", []uint{1, 200}, []uint{1}, []uint{200}, nil},
+		{"b longer", []uint{1}, []uint{1, 200}, nil, []uint{200}},
+		{"both empty", nil, nil, nil, nil},
+		{"a empty", nil, []uint{5, 70}, nil, []uint{5, 70}},
+		{"b empty", []uint{5, 70}, nil, []uint{5, 70}, nil},
+		{"identical", []uint{0, 63, 64, 130}, []uint{0, 63, 64, 130}, nil, nil},
+		{"disjoint", []uint{0, 2, 4}, []uint{1, 3, 5}, []uint{0, 2, 4}, []uint{1, 3, 5}},
+		{"word boundaries", []uint{31, 32, 63, 64}, []uint{32, 64, 65}, []uint{31, 63}, []uint{65}},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			a, b := bitset.New(tc.a...), bitset.New(tc.b...)
+
+			onlyA, onlyB := a.Delta(b)
+
+			if want := bitset.New(tc.onlyA...); !onlyA.Equal(want) {
+				t.Errorf("onlyA = %v, want %v", onlyA, want)
+			}
+			if want := bitset.New(tc.onlyB...); !onlyB.Equal(want) {
+				t.Errorf("onlyB = %v, want %v", onlyB, want)
+			}
+		})
+	}
+}
+
+func TestDeltaNoSharedStorage(t *testing.T) {
+	t.Parallel()
+	a, b := bitset.New[uint](1, 2), bitset.New[uint](2, 3)
+
+	onlyA, onlyB := a.Delta(b)
+
+	// Mutating the results must not affect the operands.
+	onlyA.Insert(500)
+	onlyB.Delete(3)
+	onlyB.Insert(600)
+	if want := bitset.New[uint](1, 2); !a.Equal(want) {
+		t.Errorf("a = %v, want %v", a, want)
+	}
+	if want := bitset.New[uint](2, 3); !b.Equal(want) {
+		t.Errorf("b = %v, want %v", b, want)
+	}
+
+	// Mutating the operands must not affect the results.
+	onlyA, onlyB = a.Delta(b)
+	a.Insert(900)
+	b.Insert(901)
+	if want := bitset.New[uint](1); !onlyA.Equal(want) {
+		t.Errorf("onlyA = %v, want %v", onlyA, want)
+	}
+	if want := bitset.New[uint](3); !onlyB.Equal(want) {
+		t.Errorf("onlyB = %v, want %v", onlyB, want)
+	}
+}
+
+func TestDeltaProperties(t *testing.T) {
+	t.Parallel()
+	rng := rand.New(rand.NewPCG(1, 2))
+
+	for range 500 {
+		a, b := randomSet(rng), randomSet(rng)
+
+		onlyA, onlyB := a.Delta(b)
+
+		if want := a.Difference(b); !onlyA.Equal(want) {
+			t.Fatalf("a=%v b=%v: onlyA = %v, want %v", a, b, onlyA, want)
+		}
+		if want := b.Difference(a); !onlyB.Equal(want) {
+			t.Fatalf("a=%v b=%v: onlyB = %v, want %v", a, b, onlyB, want)
+		}
+		if !onlyA.Intersection(b).IsEmpty() || !onlyB.Intersection(a).IsEmpty() {
+			t.Fatalf("a=%v b=%v: results overlap the other operand", a, b)
+		}
+		xor := a.Clone()
+		xor.Xor(b)
+		if got := onlyA.Union(onlyB); !got.Equal(xor) {
+			t.Fatalf("a=%v b=%v: onlyA UNION onlyB = %v, want %v", a, b, got, xor)
+		}
+		common := a.Intersection(b)
+		if !onlyA.Union(common).Equal(a) || !onlyB.Union(common).Equal(b) {
+			t.Fatalf("a=%v b=%v: operands not reconstructible from delta and intersection", a, b)
+		}
+	}
+}
+
+func randomSet(rng *rand.Rand) bitset.BitSet[uint] {
+	var bs bitset.BitSet[uint]
+	for range rng.IntN(20) {
+		bs.Insert(uint(rng.IntN(300)))
+	}
+	return bs
 }
