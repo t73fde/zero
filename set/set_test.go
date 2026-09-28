@@ -35,7 +35,7 @@ func TestNewHas(t *testing.T) {
 	if !s.Contains(3) {
 		t.Error("3")
 	}
-	vals := slices.Collect(s.All())
+	vals := slices.Collect(s.Values())
 	if len(vals) != 3 {
 		t.Error(vals)
 	}

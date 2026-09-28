@@ -84,8 +84,8 @@ func (s *Set[E]) Len() int {
 	return 0
 }
 
-// All returns an iterator of all elements of the set.
-func (s *Set[E]) All() iter.Seq[E] {
+// Values returns an iterator of all elements of the set.
+func (s *Set[E]) Values() iter.Seq[E] {
 	return func(yield func(E) bool) {
 		if s != nil && s.m != nil {
 			for elem := range s.m {

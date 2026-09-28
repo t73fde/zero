@@ -120,7 +120,7 @@ func (dg Digraph[T]) Vertices() *set.Set[T] {
 // Edges returns an unsorted slice of the edges of the digraph.
 func (dg Digraph[T]) Edges() (es EdgeSlice[T]) {
 	for vert, closure := range dg {
-		for next := range closure.All() {
+		for next := range closure.Values() {
 			es = append(es, Edge[T]{From: vert, To: next})
 		}
 	}
@@ -135,7 +135,7 @@ func (dg Digraph[T]) Originators() *set.Set[T] {
 	}
 	origs := dg.Vertices()
 	for _, closure := range dg {
-		for c := range closure.All() {
+		for c := range closure.Values() {
 			origs.Delete(c)
 		}
 	}
@@ -171,7 +171,7 @@ func (dg Digraph[T]) TransitiveClosure(v T) (tc Digraph[T]) {
 			continue
 		}
 		tc = tc.AddVertex(curr)
-		for next := range dg[curr].All() {
+		for next := range dg[curr].Values() {
 			tc = tc.AddVertex(next)
 			tc = tc.AddEdge(curr, next)
 			stack = append(stack, next)
@@ -191,7 +191,7 @@ func (dg Digraph[T]) ReachableVertices(startV T) (tc *set.Set[T]) {
 	if len(dg) == 0 {
 		return nil
 	}
-	stack := slices.Collect(dg[startV].All())
+	stack := slices.Collect(dg[startV].Values())
 	for last := len(stack) - 1; last >= 0; last = len(stack) - 1 {
 		curr := stack[last]
 		stack = stack[:last]
@@ -207,7 +207,7 @@ func (dg Digraph[T]) ReachableVertices(startV T) (tc *set.Set[T]) {
 		} else {
 			tc.Insert(curr)
 		}
-		for next := range closure.All() {
+		for next := range closure.Values() {
 			stack = append(stack, next)
 		}
 	}
@@ -229,7 +229,7 @@ func (dg Digraph[T]) IsDAG() (T, bool) {
 func (dg Digraph[T]) Reverse() (revDg Digraph[T]) {
 	for vertex, closure := range dg {
 		revDg = revDg.AddVertex(vertex)
-		for next := range closure.All() {
+		for next := range closure.Values() {
 			revDg = revDg.AddVertex(next)
 			revDg = revDg.AddEdge(next, vertex)
 		}
@@ -251,10 +251,10 @@ func (dg Digraph[T]) SortReverse() (sl []T) {
 		if terms.Len() == 0 {
 			break
 		}
-		termSlice := slices.Sorted(terms.All())
+		termSlice := slices.Sorted(terms.Values())
 		slices.Reverse(termSlice)
 		sl = append(sl, termSlice...)
-		for t := range terms.All() {
+		for t := range terms.Values() {
 			tempDg.RemoveVertex(t)
 		}
 	}
