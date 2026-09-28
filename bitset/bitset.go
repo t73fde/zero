@@ -188,15 +188,11 @@ func (bs BitSet[V]) Values() iter.Seq[V] {
 	}
 }
 
-// String returns the set in ascending order as "{1,2,7}".
+// String returns the set in ascending order as "1 2 7".
 func (bs BitSet[V]) String() string {
 	buf := make([]byte, 0, 32)
-
-	first := true
 	for num := range bs.Values() {
-		if first {
-			first = false
-		} else {
+		if len(buf) > 0 {
 			buf = append(buf, ' ')
 		}
 		buf = strconv.AppendUint(buf, uint64(num), 10)
