@@ -14,6 +14,7 @@
 package bitset_test
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"math/rand/v2"
@@ -422,6 +423,54 @@ func TestString(t *testing.T) {
 			}
 			if got := bs.String(); got != tc.exp {
 				t.Errorf("String() = %q, exp %q", got, tc.exp)
+			}
+		})
+	}
+}
+
+type failOnWrite struct {
+	writes int
+	failAt int
+	err    error
+}
+
+func (w *failOnWrite) Write(p []byte) (int, error) {
+	w.writes++
+	if w.writes == w.failAt {
+		return 0, w.err
+	}
+	return len(p), nil
+}
+
+func TestRosterWriteToWriteError(t *testing.T) {
+	wantErr := errors.New("write failed")
+
+	tests := []struct {
+		name   string
+		failAt int
+		wantN  int64
+	}{
+		{"value", 1, 0},
+		{"separator", 2, 1},
+		{"value after separator", 3, 2},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := bitset.New[uint](1, 2, 3)
+
+			w := &failOnWrite{
+				failAt: tt.failAt,
+				err:    wantErr,
+			}
+
+			n, err := r.WriteTo(w)
+
+			if !errors.Is(err, wantErr) {
+				t.Fatalf("err = %v, want %v", err, wantErr)
+			}
+			if n != tt.wantN {
+				t.Fatalf("n = %d, want %d", n, tt.wantN)
 			}
 		})
 	}

@@ -19,10 +19,12 @@
 package bitset
 
 import (
+	"io"
 	"iter"
 	"math/bits"
 	"slices"
 	"strconv"
+	"strings"
 )
 
 // Value is a type that can be stored in a BitSet.
@@ -190,14 +192,37 @@ func (bs BitSet[V]) Values() iter.Seq[V] {
 
 // String returns the set in ascending order as "1 2 7".
 func (bs BitSet[V]) String() string {
-	buf := make([]byte, 0, 32)
-	for num := range bs.Values() {
-		if len(buf) > 0 {
-			buf = append(buf, ' ')
+	var b strings.Builder
+	_, _ = bs.WriteTo(&b)
+	return b.String()
+}
+
+var _ io.WriterTo = (*BitSet[uint])(nil)
+
+// WriteTo writes the bitset's values to w, separated by spaces.
+// It returns the number of bytes written and any error encountered.
+func (bs BitSet[V]) WriteTo(w io.Writer) (n int64, err error) {
+	var buf [20]byte
+	first := true
+	for val := range bs.Values() {
+		if first {
+			first = false
+		} else {
+			buf[0] = ' '
+			m, e := w.Write(buf[:1])
+			n += int64(m)
+			if e != nil {
+				return n, e
+			}
 		}
-		buf = strconv.AppendUint(buf, uint64(num), 10)
+		p := strconv.AppendUint(buf[:0], uint64(val), 10)
+		m, e := w.Write(p)
+		n += int64(m)
+		if e != nil {
+			return n, e
+		}
 	}
-	return string(buf)
+	return n, nil
 }
 
 // ----- Set operations (non-mutating)
