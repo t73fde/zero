@@ -169,10 +169,10 @@ func (bs BitSet[V]) Equal(other BitSet[V]) bool {
 
 // ----- Iteration / conversion
 
-// All returns an iterator over all values in the set in ascending order.
+// Values returns an iterator over all values in the set in ascending order.
 //
 // The iterator does not modify the BitSet.
-func (bs BitSet[V]) All() iter.Seq[V] {
+func (bs BitSet[V]) Values() iter.Seq[V] {
 	return func(yield func(V) bool) {
 		base := V(0)
 		for _, w := range bs.words {
@@ -194,7 +194,7 @@ func (bs BitSet[V]) String() string {
 	buf = append(buf, '{')
 
 	first := true
-	for num := range bs.All() {
+	for num := range bs.Values() {
 		if first {
 			first = false
 		} else {

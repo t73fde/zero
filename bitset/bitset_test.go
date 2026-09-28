@@ -344,7 +344,7 @@ func TestEqualIgnoresTrailingZeroWords(t *testing.T) {
 	}
 }
 
-func TestAll(t *testing.T) {
+func TestValues(t *testing.T) {
 	testcases := []struct {
 		vals []uint
 	}{
@@ -358,24 +358,24 @@ func TestAll(t *testing.T) {
 				bs.Insert(n)
 			}
 			var got []uint
-			for n := range bs.All() {
+			for n := range bs.Values() {
 				got = append(got, n)
 			}
 			if !slices.Equal(got, tc.vals) {
-				t.Fatalf("All() = %v, exp %v", got, tc.vals)
+				t.Fatalf("Values() = %v, exp %v", got, tc.vals)
 			}
 		})
 	}
 }
 
-func TestAllBreak(t *testing.T) {
+func TestValuesBreak(t *testing.T) {
 	var bs bitset.BitSet[uint]
 	for _, n := range []uint{1, 2, 3, 5, 7, 11} {
 		bs.Insert(n)
 	}
 
 	var got []uint
-	for n := range bs.All() {
+	for n := range bs.Values() {
 		got = append(got, n)
 		if n == 5 {
 			break
@@ -384,18 +384,18 @@ func TestAllBreak(t *testing.T) {
 
 	exp := []uint{1, 2, 3, 5}
 	if !slices.Equal(got, exp) {
-		t.Fatalf("All() = %v, exp %v", got, exp)
+		t.Fatalf("Values() = %v, exp %v", got, exp)
 	}
 }
 
-func TestAllDelete(t *testing.T) {
+func TestValuesDelete(t *testing.T) {
 	bs := bitset.New(uint(0), uint(1), uint(64), uint(1000))
 
-	for n := range bs.All() {
+	for n := range bs.Values() {
 		bs.Delete(n)
 	}
 	if !bs.IsEmpty() {
-		t.Fatalf("Delete during All() left values: %v", bs)
+		t.Fatalf("Delete during Values() left values: %v", bs)
 	}
 }
 

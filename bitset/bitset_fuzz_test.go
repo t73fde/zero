@@ -99,7 +99,7 @@ func checkBitSetInvariant(t *testing.T, bs bitset.BitSet[uint], ref map[uint]str
 	}
 
 	// Every value returned by the BitSet must exist in the reference set.
-	for n := range bs.All() {
+	for n := range bs.Values() {
 		if _, ok := ref[n]; !ok {
 			t.Fatalf("All() returned %d, not in reference set", n)
 		}
