@@ -66,7 +66,7 @@ func FuzzBitSetOperations(f *testing.F) {
 				}
 
 			case 14:
-				bs.Clip()
+				bs.Shrink()
 
 			case 15:
 				bs.DeleteAll()

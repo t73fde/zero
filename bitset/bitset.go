@@ -384,8 +384,15 @@ func (bs *BitSet[V]) EnsureBit(n V) {
 	_ = bs.ensureWord(n)
 }
 
-// Clip reduces the BitSet storage to the minimum size needed for its values.
-func (bs *BitSet[V]) Clip() {
+// Shrink releases unused storage. It removes trailing all-zero words and,
+// if the underlying array has spare capacity afterwards, copies the
+// remaining words to a new array of (about) the needed size, so that the
+// old array can be garbage collected.
+//
+// Shrink does not change the values of the set. Because it reallocates, it
+// is relatively expensive. Use it for long-living sets that were built from
+// larger intermediate results.
+func (bs *BitSet[V]) Shrink() {
 	i := len(bs.words)
 	for i > 0 && bs.words[i-1] == 0 {
 		i--
@@ -393,7 +400,7 @@ func (bs *BitSet[V]) Clip() {
 	if i == 0 {
 		bs.words = nil
 	} else {
-		bs.words = bs.words[:i:i]
+		bs.words = slices.Clone(bs.words[:i])
 	}
 }
 

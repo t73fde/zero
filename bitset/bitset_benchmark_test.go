@@ -135,12 +135,12 @@ func BenchmarkBitSetSparseClone(b *testing.B) {
 	}
 }
 
-func BenchmarkBitSetClip(b *testing.B) {
+func BenchmarkBitSetShrink(b *testing.B) {
 	for b.Loop() {
 		var bs bitset.BitSet[uint]
 		bs.EnsureBit(1_000_000)
 		bs.Insert(1)
-		bs.Clip()
+		bs.Shrink()
 	}
 }
 

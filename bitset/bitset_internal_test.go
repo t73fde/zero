@@ -70,7 +70,7 @@ func TestClipRemovesTrailingWords(t *testing.T) {
 	var bs BitSet[uint16]
 
 	bs.EnsureBit(10000)
-	bs.Clip()
+	bs.Shrink()
 
 	if bs.words != nil {
 		t.Fatalf("words = %v, want nil", bs.words)
@@ -78,7 +78,7 @@ func TestClipRemovesTrailingWords(t *testing.T) {
 
 	bs.EnsureBit(10000)
 	bs.Insert(0)
-	bs.Clip()
+	bs.Shrink()
 
 	if got, want := cap(bs.words), len(bs.words); got != want {
 		t.Fatalf("cap(words) = %d, len(words) = %d", got, want)
