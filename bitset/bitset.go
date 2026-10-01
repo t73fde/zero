@@ -64,9 +64,7 @@ func New[V Value](values ...V) BitSet[V] {
 // Collect returns a BitSet containing all values produced by seq.
 func Collect[V Value](seq iter.Seq[V]) BitSet[V] {
 	var bs BitSet[V]
-	for n := range seq {
-		bs.Insert(n)
-	}
+	bs.InsertSeq(seq)
 	return bs
 }
 
@@ -75,6 +73,13 @@ func Collect[V Value](seq iter.Seq[V]) BitSet[V] {
 // Insert a non-negative integer to the set.
 func (bs *BitSet[V]) Insert(n V) {
 	bs.words[bs.ensureWord(n)] |= word(1) << (n & wordMask)
+}
+
+// InsertSeq inserts all values produced by seq into bs.
+func (bs *BitSet[V]) InsertSeq(seq iter.Seq[V]) {
+	for n := range seq {
+		bs.Insert(n)
+	}
 }
 
 // Delete a non-negative integer from the set.
@@ -185,6 +190,31 @@ func (bs BitSet[V]) Equal(other BitSet[V]) bool {
 		i--
 	}
 	return true
+}
+
+// IsSubset reports whether all values in bs are also contained in other.
+func (bs BitSet[V]) IsSubset(other BitSet[V]) bool {
+	for i, w := range bs.words {
+		var ow word
+		if i < len(other.words) {
+			ow = other.words[i]
+		}
+		if w&^ow != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// Intersects reports whether bs and other share at least one value.
+func (bs BitSet[V]) Intersects(other BitSet[V]) bool {
+	n := min(len(bs.words), len(other.words))
+	for i := range n {
+		if bs.words[i]&other.words[i] != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // ----- Iteration / conversion

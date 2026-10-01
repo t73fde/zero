@@ -154,6 +154,42 @@ func TestInsertGrowth(t *testing.T) {
 	}
 }
 
+func TestInsertSeq(t *testing.T) {
+	var bs bitset.BitSet[uint]
+	bs.Insert(1)
+
+	bs.InsertSeq(slices.Values([]uint{2, 3, 4}))
+
+	want := bitset.New[uint](1, 2, 3, 4)
+	if !bs.Equal(want) {
+		t.Errorf("InsertSeq: got %s, want %s", bs.String(), want.String())
+	}
+}
+
+func TestInsertSeqEmpty(t *testing.T) {
+	bs := bitset.New[uint](1, 2)
+	before := bs.String()
+
+	bs.InsertSeq(slices.Values([]uint{}))
+
+	if got := bs.String(); got != before {
+		t.Errorf("InsertSeq(empty): got %s, want unchanged %s", got, before)
+	}
+}
+
+func TestCollectMatchesInsertSeq(t *testing.T) {
+	values := []uint{5, 1, 5, 3, 1}
+
+	collected := bitset.Collect(slices.Values(values))
+
+	var inserted bitset.BitSet[uint]
+	inserted.InsertSeq(slices.Values(values))
+
+	if !collected.Equal(inserted) {
+		t.Errorf("Collect() = %s, InsertSeq() = %s, want equal", collected.String(), inserted.String())
+	}
+}
+
 func TestDelete(t *testing.T) {
 	var bs bitset.BitSet[uint32]
 
@@ -230,35 +266,35 @@ func testPop[V bitset.Value](t *testing.T, values ...V) {
 }
 
 func TestBitSetPopTypes(t *testing.T) {
-	t.Run("uint8", func(t *testing.T) {
-		testPop(t, uint8(0), uint8(1), uint8(127), uint8(255))
-	})
-
-	t.Run("uint16", func(t *testing.T) {
-		testPop(t, uint16(0), uint16(1), uint16(255), uint16(65535))
-	})
-
-	t.Run("uint32", func(t *testing.T) {
-		testPop(t, uint32(0), uint32(1), uint32(1<<16), ^uint32(0))
-	})
-}
-
-func TestBitSetPop2(t *testing.T) {
 	t.Run("uint", func(t *testing.T) {
 		testPop(t, uint(0), 1, 63, 64, 127, 1000)
 	})
 
 	t.Run("uint8", func(t *testing.T) {
+		testPop(t, uint8(0), uint8(1), uint8(127), uint8(255))
 		testPop(t, uint8(0), 1, 127, 255)
 	})
 
 	t.Run("uint16", func(t *testing.T) {
+		testPop(t, uint16(0), uint16(1), uint16(255), uint16(65535))
 		testPop(t, uint16(0), 1, 255, 256, 65535)
 	})
 
 	t.Run("uint32", func(t *testing.T) {
+		testPop(t, uint32(0), uint32(1), uint32(1<<16), ^uint32(0))
 		testPop(t, uint32(0), 1, 1<<16, 1<<31, ^uint32(0))
 	})
+}
+
+func TestBitSetPopEmpty(t *testing.T) {
+	var bs bitset.BitSet[uint]
+	if !bs.IsEmpty() {
+		t.Fatal("bitset is not empty but should be")
+	}
+	_, b := bs.Pop()
+	if b != false {
+		t.Error("Pop() of empty bitset must return false, but got true")
+	}
 }
 
 func TestCount(t *testing.T) {
@@ -406,6 +442,62 @@ func TestEqualIgnoresTrailingZeroWords(t *testing.T) {
 	}
 	if !b.Equal(a) {
 		t.Fatal("Equal() not symmetric")
+	}
+}
+
+func TestIsSubset(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b []uint
+		want bool
+	}{
+		{"empty subset of empty", []uint{}, []uint{}, true},
+		{"empty subset of non-empty", []uint{}, []uint{1, 2}, true},
+		{"equal sets", []uint{1, 2, 3}, []uint{1, 2, 3}, true},
+		{"proper subset", []uint{1, 2}, []uint{1, 2, 3}, true},
+		{"not a subset, disjoint", []uint{1, 2}, []uint{3, 4}, false},
+		{"not a subset, partial overlap", []uint{1, 2, 3}, []uint{2, 3, 4}, false},
+		{"superset not subset of shorter other", []uint{1, 200}, []uint{1}, false},
+		{"subset entirely within shorter other's word range", []uint{1}, []uint{1, 200}, true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			a := bitset.New(tc.a...)
+			b := bitset.New(tc.b...)
+			if got := a.IsSubset(b); got != tc.want {
+				t.Errorf("IsSubset(%v, %v) = %v, want %v", tc.a, tc.b, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestIntersects(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b []uint
+		want bool
+	}{
+		{"disjoint", []uint{1, 3}, []uint{2, 4}, false},
+		{"overlap", []uint{1, 2, 3}, []uint{2, 3, 4}, true},
+		{"empty a", []uint{}, []uint{1, 2}, false},
+		{"empty b", []uint{1, 2}, []uint{}, false},
+		{"both empty", []uint{}, []uint{}, false},
+		{"identical", []uint{1, 2, 3}, []uint{1, 2, 3}, true},
+		{"overlap only beyond shorter length", []uint{200}, []uint{200, 300}, true},
+		{"no overlap, different word ranges", []uint{1}, []uint{200}, false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			a := bitset.New(tc.a...)
+			b := bitset.New(tc.b...)
+			if got := a.Intersects(b); got != tc.want {
+				t.Errorf("Intersects(%v, %v) = %v, want %v", tc.a, tc.b, got, tc.want)
+			}
+			// Intersects must be symmetric.
+			if got := b.Intersects(a); got != tc.want {
+				t.Errorf("Intersects(%v, %v) [swapped] = %v, want %v", tc.b, tc.a, got, tc.want)
+			}
+		})
 	}
 }
 
