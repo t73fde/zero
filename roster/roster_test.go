@@ -221,6 +221,54 @@ func TestInsertIntoZeroValue(t *testing.T) {
 	}
 }
 
+func TestInsertSeqTable(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		initial  []uint
+		seq      []uint
+		expected []uint
+	}{
+		{"empty into empty", nil, nil, nil},
+		{"empty seq", []uint{1, 2}, nil, []uint{1, 2}},
+		{"into zero value", nil, []uint{3, 1, 2}, []uint{1, 2, 3}},
+		{"duplicates in seq", []uint{5}, []uint{2, 2, 2}, []uint{2, 5}},
+		{"overlap with existing", []uint{1, 2, 3}, []uint{3, 2, 4}, []uint{1, 2, 3, 4}},
+		{"all new, interleaved", []uint{2, 4}, []uint{3, 1, 5}, []uint{1, 2, 3, 4, 5}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			r := roster.New(tc.initial...)
+			r.InsertSeq(slices.Values(tc.seq))
+			if got := values(r); !slices.Equal(got, tc.expected) {
+				t.Errorf("got %v, want %v", got, tc.expected)
+			}
+		})
+	}
+}
+
+func TestInsertSeqRandom(t *testing.T) {
+	t.Parallel()
+	forRandomPairs(t, func(t *testing.T, initial, seq []uint) {
+		r := roster.New(initial...)
+		r.InsertSeq(slices.Values(seq))
+
+		want := refSet(initial)
+		for _, v := range seq {
+			want[v] = struct{}{}
+		}
+		expected := slices.Sorted(maps.Keys(want))
+
+		if got := values(r); !slices.Equal(got, expected) {
+			t.Fatalf("InsertSeq(%v, %v) = %v, want %v", initial, seq, got, expected)
+		}
+		if r.Count() != len(expected) {
+			t.Fatalf("Count() = %d, want %d", r.Count(), len(expected))
+		}
+	})
+}
+
 func TestDelete(t *testing.T) {
 	t.Parallel()
 	testcases := []struct {
@@ -690,12 +738,16 @@ func TestEqual(t *testing.T) {
 				t.Errorf("%v.Equal(%v) = %v, want %v", tc.b, tc.a, got, tc.want)
 			}
 			// Equality is reflexive.
-			if !a.Equal(a) || !b.Equal(b) {
+			if !a.Equal(self(a)) || !b.Equal(self(b)) {
 				t.Error("Equal is not reflexive")
 			}
 		})
 	}
 }
+
+// self returns r unchanged. It marks an intentional self-application such as
+// a.IsSubset(self(a)) and keeps linters from reporting it as a typo.
+func self[T any](v T) T { return v }
 
 func TestEqualZeroValue(t *testing.T) {
 	t.Parallel()
@@ -704,7 +756,7 @@ func TestEqualZeroValue(t *testing.T) {
 	if !zero.Equal(roster.New[uint]()) || !roster.New[uint]().Equal(zero) {
 		t.Error("zero value differs from empty set")
 	}
-	if !zero.Equal(zero) {
+	if !zero.Equal(self(zero)) {
 		t.Error("zero value differs from itself")
 	}
 }
@@ -784,6 +836,155 @@ func TestEqualAgainstReference(t *testing.T) {
 	}
 }
 
+func TestIsSubsetTable(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		a, b []uint
+		want bool
+	}{
+		{"both empty", nil, nil, true},
+		{"empty of non-empty", nil, []uint{1}, true},
+		{"non-empty of empty", []uint{1}, nil, false},
+		{"equal", []uint{1, 2, 3}, []uint{3, 2, 1}, true},
+		{"proper subset", []uint{2}, []uint{1, 2, 3}, true},
+		{"proper superset", []uint{1, 2, 3}, []uint{2}, false},
+		{"overlapping", []uint{1, 2}, []uint{2, 3}, false},
+		{"disjoint", []uint{1, 2}, []uint{3, 4}, false},
+		{"last value missing", []uint{1, 2, 9}, []uint{1, 2, 3, 4}, false},
+		{"first value missing", []uint{0, 2}, []uint{1, 2, 3}, false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			a, b := roster.New(tc.a...), roster.New(tc.b...)
+			if got := a.IsSubset(b); got != tc.want {
+				t.Errorf("IsSubset(%v, %v) = %v, want %v", a, b, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestIsSubsetRandom(t *testing.T) {
+	t.Parallel()
+	forRandomPairs(t, func(t *testing.T, av, bv []uint) {
+		a, b := roster.New(av...), roster.New(bv...)
+		beforeA, beforeB := values(a), values(b)
+
+		want := refSubset(refSet(av), refSet(bv))
+		if got := a.IsSubset(b); got != want {
+			t.Fatalf("IsSubset(%v, %v) = %v, want %v", a, b, got, want)
+		}
+		if !a.IsSubset(a) {
+			t.Fatalf("IsSubset(%v, itself) = false", a)
+		}
+		if !slices.Equal(values(a), beforeA) || !slices.Equal(values(b), beforeB) {
+			t.Fatalf("IsSubset modified an operand")
+		}
+	})
+}
+
+func TestIntersectsTable(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		a, b []uint
+		want bool
+	}{
+		{"both empty", nil, nil, false},
+		{"one empty", []uint{1}, nil, false},
+		{"equal", []uint{1, 2}, []uint{1, 2}, true},
+		{"common first", []uint{1, 5}, []uint{1, 9}, true},
+		{"common last", []uint{1, 9}, []uint{5, 9}, true},
+		{"interleaved, disjoint", []uint{1, 3, 5}, []uint{2, 4, 6}, false},
+		{"separate ranges a<b", []uint{1, 2}, []uint{3, 4}, false},
+		{"separate ranges b<a", []uint{3, 4}, []uint{1, 2}, false},
+		{"touching ranges", []uint{1, 2}, []uint{2, 3}, true},
+		{"single common in middle", []uint{1, 5, 9}, []uint{2, 5, 8}, true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			a, b := roster.New(tc.a...), roster.New(tc.b...)
+			if got := a.Intersects(b); got != tc.want {
+				t.Errorf("Intersects(%v, %v) = %v, want %v", a, b, got, tc.want)
+			}
+			if got := b.Intersects(a); got != tc.want {
+				t.Errorf("Intersects(%v, %v) = %v, want %v (symmetry)", b, a, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestIntersectsRandom(t *testing.T) {
+	t.Parallel()
+	forRandomPairs(t, func(t *testing.T, av, bv []uint) {
+		a, b := roster.New(av...), roster.New(bv...)
+		beforeA, beforeB := values(a), values(b)
+
+		want := refIntersects(refSet(av), refSet(bv))
+		if got := a.Intersects(b); got != want {
+			t.Fatalf("Intersects(%v, %v) = %v, want %v", a, b, got, want)
+		}
+		if got := b.Intersects(a); got != want {
+			t.Fatalf("Intersects(%v, %v) = %v, want %v (symmetry)", b, a, got, want)
+		}
+		if !slices.Equal(values(a), beforeA) || !slices.Equal(values(b), beforeB) {
+			t.Fatalf("Intersects modified an operand")
+		}
+	})
+}
+
+// forRandomPairs calls f for many random pairs of value slices with
+// varying size and density.
+func forRandomPairs(t *testing.T, f func(t *testing.T, a, b []uint)) {
+	t.Helper()
+	rng := rand.New(rand.NewPCG(1, 2))
+	for _, maxLen := range []int{0, 1, 5, 50} {
+		for _, maxVal := range []uint{2, 16, 1000} {
+			for range 500 {
+				f(t, randomValues(rng, maxLen, maxVal), randomValues(rng, maxLen, maxVal))
+			}
+		}
+	}
+}
+
+// randomValues returns up to maxLen values below maxVal;
+// unsorted order and duplicates are possible.
+func randomValues(rng *rand.Rand, maxLen int, maxVal uint) []uint {
+	vals := make([]uint, rng.IntN(maxLen+1))
+	for i := range vals {
+		vals[i] = rng.UintN(maxVal)
+	}
+	return vals
+}
+
+func refSet(vals []uint) map[uint]struct{} {
+	m := make(map[uint]struct{}, len(vals))
+	for _, v := range vals {
+		m[v] = struct{}{}
+	}
+	return m
+}
+
+func refSubset(a, b map[uint]struct{}) bool {
+	for v := range a {
+		if _, ok := b[v]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func refIntersects(a, b map[uint]struct{}) bool {
+	for v := range a {
+		if _, ok := b[v]; ok {
+			return true
+		}
+	}
+	return false
+}
+
 func TestValues(t *testing.T) {
 	t.Parallel()
 	r := roster.New[uint](5, 1, 3, 1)
@@ -858,7 +1059,7 @@ func TestRosterWriteToWriteError(t *testing.T) {
 	}{
 		{"value", 1, 0},
 		{"separator", 2, 1},
-		{"value after separator", 3, 2},
+		{"value after separator", 3, 3},
 	}
 
 	for _, tt := range tests {

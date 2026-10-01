@@ -24,6 +24,12 @@
 //
 // The zero value of Roster is an empty set and ready to use. Set operations
 // do not modify their operands; results never share storage with them.
+//
+// Copying a Roster: Roster is a value type that holds a slice. Assigning a
+// Roster or passing it by value copies only the slice header, so both copies
+// share the same storage. Modifying one of them (Insert, Delete, DeleteAll,
+// Pop, And, ...) is then not allowed to be relied upon for the other copy.
+// An independent copy is obtained only by calling Clone.
 package roster
 
 import (
@@ -41,6 +47,9 @@ type Value interface {
 
 // Roster is a set of non-negative integer values, implemented as a sorted
 // array, without duplicates.
+//
+// A Roster must not be copied by assignment if either copy is modified
+// afterwards; use Clone to obtain an independent copy.
 type Roster[V Value] struct {
 	array []V
 }
@@ -78,6 +87,15 @@ func (r *Roster[V]) Insert(n V) {
 	if i, found := slices.BinarySearch(r.array, n); !found {
 		r.array = slices.Insert(r.array, i, n)
 	}
+}
+
+// InsertSeq adds all values produced by seq to the set.
+// Unsorted input and duplicate values are allowed.
+//
+// InsertSeq takes O(k log k + n + k) for k produced values, in contrast to
+// O(k*n) for k calls of Insert.
+func (r *Roster[V]) InsertSeq(seq iter.Seq[V]) {
+	r.Or(Collect(seq))
 }
 
 // Delete removes a non-negative integer from the set.
@@ -150,6 +168,54 @@ func (r Roster[V]) Equal(other Roster[V]) bool {
 	return slices.Equal(r.array, other.array)
 }
 
+// IsSubset reports whether every value of r is also in other.
+// The empty set is a subset of every set.
+//
+// IsSubset does not allocate memory and stops at the first value of r that is
+// not in other.
+func (r Roster[V]) IsSubset(other Roster[V]) bool {
+	a, b := r.array, other.array
+	if len(a) > len(b) {
+		return false
+	}
+	j := 0
+	for _, v := range a {
+		for j < len(b) && b[j] < v {
+			j++
+		}
+		if j == len(b) || b[j] != v {
+			return false
+		}
+		j++
+	}
+	return true
+}
+
+// Intersects reports whether r and other have at least one value in common.
+//
+// Intersects does not allocate memory and stops at the first common value.
+func (r Roster[V]) Intersects(other Roster[V]) bool {
+	a, b := r.array, other.array
+	if len(a) == 0 || len(b) == 0 {
+		return false
+	}
+	if a[len(a)-1] < b[0] || b[len(b)-1] < a[0] {
+		return false
+	}
+	i, j := 0, 0
+	for i < len(a) && j < len(b) {
+		switch {
+		case a[i] < b[j]:
+			i++
+		case a[i] > b[j]:
+			j++
+		default:
+			return true
+		}
+	}
+	return false
+}
+
 // ----- Iteration / conversion
 
 // Values returns an iterator over all values in the set in ascending order.
@@ -167,23 +233,19 @@ func (r Roster[V]) String() string {
 	return b.String()
 }
 
-var _ io.WriterTo = (*Roster[uint])(nil)
+var _ io.WriterTo = Roster[uint]{}
 
 // WriteTo writes the roster's values to w, separated by spaces.
 // It returns the number of bytes written and any error encountered.
 func (r Roster[V]) WriteTo(w io.Writer) (n int64, err error) {
-	var buf [20]byte
+	var buf [21]byte // 20 bytes for digits, one for separator
 	for i, val := range r.array {
+		b := buf[:0]
 		if i > 0 {
-			buf[0] = ' '
-			m, e := w.Write(buf[:1])
-			n += int64(m)
-			if e != nil {
-				return n, e
-			}
+			b = append(b, ' ')
 		}
-		p := strconv.AppendUint(buf[:0], uint64(val), 10)
-		m, e := w.Write(p)
+		b = strconv.AppendUint(b, uint64(val), 10)
+		m, e := w.Write(b)
 		n += int64(m)
 		if e != nil {
 			return n, e
@@ -201,6 +263,11 @@ func (r Roster[V]) Union(other Roster[V]) Roster[V] {
 
 // Intersection returns the intersection of r and other.
 func (r Roster[V]) Intersection(other Roster[V]) Roster[V] {
+	if len(other.array) < len(r.array) {
+		result := other.Clone()
+		result.And(r)
+		return result
+	}
 	result := r.Clone()
 	result.And(other)
 	return result
@@ -363,11 +430,13 @@ func (r Roster[V]) Clone() Roster[V] {
 
 // Grow ensures that n values can be inserted without further allocation.
 // It does not insert n.
+//
+// Grow panics if n is negative or too large to allocate the memory
 func (r *Roster[V]) Grow(n int) {
 	r.array = slices.Grow(r.array, n)
 }
 
-// Clip reduces the Roaster storage to the minimum size needed for its values.
+// Clip reduces the Roster storage to the minimum size needed for its values.
 func (r *Roster[V]) Clip() {
 	if len(r.array) == 0 {
 		r.array = nil
