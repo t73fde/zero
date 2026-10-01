@@ -22,14 +22,24 @@
 // while a Roster needs memory proportional to the number of values and is
 // best for sparse sets or sets with large values.
 //
-// The zero value of Roster is an empty set and ready to use. Set operations
-// do not modify their operands; results never share storage with them.
+// Roster is a value type that holds a slice. Methods that modify the set
+// (Insert, Delete, Pop, And, ...) have pointer receivers; all other methods
+// have value receivers.
 //
-// Copying a Roster: Roster is a value type that holds a slice. Assigning a
-// Roster or passing it by value copies only the slice header, so both copies
-// share the same storage. Modifying one of them (Insert, Delete, DeleteAll,
-// Pop, And, ...) is then not allowed to be relied upon for the other copy.
-// An independent copy is obtained only by calling Clone.
+// A modifying method may reallocate the underlying array. Therefore a Roster
+// that is stored in a map element or in a slice element must be modified
+// via a variable and written back:
+//
+//	r := m[key]
+//	r.Insert(n)
+//	m[key] = r
+//
+// Alternatively, store *Roster values.
+//
+// Assigning a Roster or passing it by value copies only the slice header,
+// so both copies share the same storage. Modifying one of them (Insert,
+// Delete, Pop, And, ...) is then not allowed to be relied upon for the other
+// copy. An independent copy is obtained only by calling Clone.
 package roster
 
 import (
@@ -59,22 +69,21 @@ type Roster[V Value] struct {
 // New returns a Roster containing all given values.
 // Unsorted input and duplicate values are allowed.
 func New[V Value](values ...V) Roster[V] {
-	if len(values) == 0 {
-		return Roster[V]{}
-	}
-	array := slices.Clone(values) // do not sort the caller's slice in place
-	slices.Sort(array)
-	return Roster[V]{array: slices.Compact(array)}
+	return fromUnsorted(slices.Clone(values))
 }
 
 // Collect returns a Roster containing all values produced by seq.
 func Collect[V Value](seq iter.Seq[V]) Roster[V] {
-	array := slices.Collect(seq)
-	if len(array) == 0 {
+	return fromUnsorted(slices.Collect(seq))
+}
+
+func fromUnsorted[V Value](slv []V) Roster[V] {
+	if len(slv) == 0 {
 		return Roster[V]{}
 	}
-	slices.Sort(array)
-	return Roster[V]{array: slices.Compact(array)}
+	slices.Sort(slv)
+	return Roster[V]{array: slices.Compact(slv)}
+
 }
 
 // ----- Basic set operations
@@ -117,8 +126,7 @@ func (r *Roster[V]) DeleteAll() {
 func (r *Roster[V]) Pop() (V, bool) {
 	n := len(r.array)
 	if n == 0 {
-		var zero V
-		return zero, false
+		return 0, false
 	}
 
 	n--
@@ -436,11 +444,17 @@ func (r *Roster[V]) Grow(n int) {
 	r.array = slices.Grow(r.array, n)
 }
 
-// Clip reduces the Roster storage to the minimum size needed for its values.
-func (r *Roster[V]) Clip() {
+// Shrink releases unused storage. If the underlying array has spare
+// capacity, the values are copied to a new array of (about) the needed size,
+// so that the old array can be garbage collected.
+//
+// Shrink does not change the values of the set. Because it reallocates, it
+// is relatively expensive. Use it for long-living sets that were built from
+// larger intermediate results.
+func (r *Roster[V]) Shrink() {
 	if len(r.array) == 0 {
 		r.array = nil
-	} else {
-		r.array = slices.Clip(r.array)
+	} else if cap(r.array) > len(r.array) {
+		r.array = slices.Clone(r.array)
 	}
 }

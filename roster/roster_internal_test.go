@@ -129,7 +129,7 @@ func TestClip(t *testing.T) {
 		{"zero value", func() Roster[uint] { return Roster[uint]{} }, nil},
 		{"tight", func() Roster[uint] {
 			r := New[uint](1, 2, 3)
-			r.Clip()
+			r.Shrink()
 			return r
 		}, []uint{1, 2, 3}},
 		{"spare capacity after Grow", func() Roster[uint] {
@@ -159,7 +159,7 @@ func TestClip(t *testing.T) {
 			t.Parallel()
 			r := tc.setup()
 
-			r.Clip()
+			r.Shrink()
 
 			if cap(r.array) != len(r.array) {
 				t.Errorf("cap = %d, len = %d, want equal", cap(r.array), len(r.array))
@@ -202,7 +202,7 @@ func TestClipEmptyReleasesStorage(t *testing.T) {
 				t.Skip("setup left no storage to release")
 			}
 
-			r.Clip()
+			r.Shrink()
 
 			if r.array != nil {
 				t.Errorf("array = %v with cap %d, want nil", r.array, cap(r.array))
@@ -218,10 +218,10 @@ func TestClipTwiceKeepsStorage(t *testing.T) {
 	t.Parallel()
 	r := New[uint](1, 2, 3)
 	r.Grow(10)
-	r.Clip()
+	r.Shrink()
 	first, capBefore := &r.array[0], cap(r.array)
 
-	r.Clip() // already tight: must not copy
+	r.Shrink() // already tight: must not copy
 
 	if &r.array[0] != first || cap(r.array) != capBefore {
 		t.Error("second Clip reallocated")
@@ -232,7 +232,7 @@ func TestClipThenReuse(t *testing.T) {
 	t.Parallel()
 	r := New[uint](1, 2, 3, 4, 5)
 	r.And(New[uint](2, 4, 6))
-	r.Clip()
+	r.Shrink()
 
 	// Values dropped by And must not reappear, and growth after Clip works.
 	r.Insert(3)
@@ -250,7 +250,7 @@ func TestClipDoesNotAffectCopy(t *testing.T) {
 	r1.Grow(10)
 	r2 := r1 // shares the storage
 
-	r1.Clip()
+	r1.Shrink()
 
 	if got, want := contents(r2), []uint{1, 2, 3}; !slices.Equal(got, want) {
 		t.Errorf("copy = %v, want %v", got, want)
@@ -265,7 +265,7 @@ func TestGrowThenClipRoundTrip(t *testing.T) {
 	r := New[uint](4, 8)
 
 	r.Grow(1000)
-	r.Clip()
+	r.Shrink()
 
 	if cap(r.array) != 2 {
 		t.Errorf("cap = %d, want 2", cap(r.array))
