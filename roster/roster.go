@@ -11,16 +11,25 @@
 // SPDX-FileCopyrightText: 2026-present Detlef Stern
 //-----------------------------------------------------------------------------
 
-// Package roster implements a set of non-negative integers as a sorted array.
+// Package roster implements a set of values of an ordered type
+// (cmp.Ordered) as a sorted array.
 //
-// A Roster stores its values in strictly ascending order, without duplicates.
-// Membership tests take O(log n), and set operations such as Delta take
-// O(n+m) by merging the sorted arrays of both operands in a single pass.
+// A Roster stores its values in strictly ascending order as defined by
+// cmp.Compare, without duplicates. Values that compare equal are the same
+// element. For floating-point types this means that 0.0 and -0.0 are one
+// element, and NaN equals NaN.
 //
-// Roster is the counterpart to package bitset: a BitSet needs memory
+// Membership tests take O(log n) comparisons, and set operations such as
+// Delta take O(n+m) comparisons by merging the sorted arrays of both
+// operands in a single pass. For string values, a comparison costs time
+// proportional to the length of the common prefix.
+//
+// Roster is the counterpart to package bitset when the element type is
+// restricted to non-negative integer values: a BitSet needs memory
 // proportional to its largest value and is best for dense value ranges,
 // while a Roster needs memory proportional to the number of values and is
-// best for sparse sets or sets with large values.
+// best for sparse sets or sets with large values. Only Roster supports
+// other ordered types, such as strings.
 //
 // Roster is a value type that holds a slice. Methods that modify the set
 // (Insert, Delete, Pop, And, ...) have pointer receivers; all other methods
@@ -37,12 +46,14 @@
 // Alternatively, store *Roster values.
 //
 // Assigning a Roster or passing it by value copies only the slice header,
-// so both copies share the same storage. Modifying one of them (Insert,
-// Delete, Pop, And, ...) is then not allowed to be relied upon for the other
-// copy. An independent copy is obtained only by calling Clone.
+// so both copies share the same storage. After modifying one of them, the
+// state of the other copy is unspecified. An independent copy is obtained
+// only by calling Clone.
 package roster
 
 import (
+	"cmp"
+	"fmt"
 	"io"
 	"iter"
 	"slices"
@@ -50,17 +61,12 @@ import (
 	"strings"
 )
 
-// Value is a type that can be stored in a Roster.
-type Value interface {
-	~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64
-}
-
-// Roster is a set of non-negative integer values, implemented as a sorted
-// array, without duplicates.
+// Roster is a set of ordered values, implemented as a sorted array, without
+// duplicates.
 //
 // A Roster must not be copied by assignment if either copy is modified
 // afterwards; use Clone to obtain an independent copy.
-type Roster[V Value] struct {
+type Roster[V cmp.Ordered] struct {
 	array []V
 }
 
@@ -68,16 +74,16 @@ type Roster[V Value] struct {
 
 // New returns a Roster containing all given values.
 // Unsorted input and duplicate values are allowed.
-func New[V Value](values ...V) Roster[V] {
+func New[V cmp.Ordered](values ...V) Roster[V] {
 	return fromUnsorted(slices.Clone(values))
 }
 
 // Collect returns a Roster containing all values produced by seq.
-func Collect[V Value](seq iter.Seq[V]) Roster[V] {
+func Collect[V cmp.Ordered](seq iter.Seq[V]) Roster[V] {
 	return fromUnsorted(slices.Collect(seq))
 }
 
-func fromUnsorted[V Value](slv []V) Roster[V] {
+func fromUnsorted[V cmp.Ordered](slv []V) Roster[V] {
 	if len(slv) == 0 {
 		return Roster[V]{}
 	}
@@ -126,7 +132,8 @@ func (r *Roster[V]) DeleteAll() {
 func (r *Roster[V]) Pop() (V, bool) {
 	n := len(r.array)
 	if n == 0 {
-		return 0, false
+		var zero V
+		return zero, false
 	}
 
 	n--
@@ -159,7 +166,8 @@ func (r Roster[V]) Min() (V, bool) {
 	if len(r.array) > 0 {
 		return r.array[0], true
 	}
-	return 0, false
+	var zero V
+	return zero, false
 }
 
 // Max returns the largest value in the Roster.
@@ -168,7 +176,8 @@ func (r Roster[V]) Max() (V, bool) {
 	if l := len(r.array); l > 0 {
 		return r.array[l-1], true
 	}
-	return 0, false
+	var zero V
+	return zero, false
 }
 
 // Equal reports whether r and other contain the same values.
@@ -252,7 +261,7 @@ func (r Roster[V]) WriteTo(w io.Writer) (n int64, err error) {
 		if i > 0 {
 			b = append(b, ' ')
 		}
-		b = strconv.AppendUint(b, uint64(val), 10)
+		b = appendValue(b, val)
 		m, e := w.Write(b)
 		n += int64(m)
 		if e != nil {
@@ -260,6 +269,19 @@ func (r Roster[V]) WriteTo(w io.Writer) (n int64, err error) {
 		}
 	}
 	return n, nil
+}
+func appendValue[V cmp.Ordered](buf []byte, val V) []byte {
+	switch v := any(val).(type) {
+	case string:
+		return append(buf, v...)
+	case int:
+		return strconv.AppendInt(buf, int64(v), 10)
+	case uint:
+		return strconv.AppendUint(buf, uint64(v), 10)
+	// further fast paths as needed (int64, uint32, ...)
+	default:
+		return fmt.Append(buf, val)
+	}
 }
 
 // ----- Set operations (non-mutating)
@@ -405,7 +427,7 @@ func (r *Roster[V]) Xor(other Roster[V]) {
 
 // union returns the sorted union of the sorted, duplicate-free arrays a and b
 // as a new array.
-func union[V Value](a, b []V) []V {
+func union[V cmp.Ordered](a, b []V) []V {
 	if len(a)+len(b) == 0 {
 		return nil
 	}

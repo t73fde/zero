@@ -14,6 +14,7 @@
 package roster_test
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"maps"
@@ -139,7 +140,7 @@ func TestNewCollectProperties(t *testing.T) {
 	}
 }
 
-func strictlyAscending[V roster.Value](a []V) bool {
+func strictlyAscending[V cmp.Ordered](a []V) bool {
 	for i := 1; i < len(a); i++ {
 		if a[i-1] >= a[i] {
 			return false
@@ -370,7 +371,7 @@ func TestDeleteAllEmpty(t *testing.T) {
 	}
 }
 
-func testPop[V roster.Value](t *testing.T, values ...V) {
+func testPop[V cmp.Ordered](t *testing.T, values ...V) {
 	t.Helper()
 
 	r := roster.New(values...)
@@ -406,20 +407,32 @@ func testPop[V roster.Value](t *testing.T, values ...V) {
 }
 
 func TestRosterPop(t *testing.T) {
-	t.Run("uint", func(t *testing.T) {
-		testPop(t, uint(0), 1, 63, 64, 127, 1000)
+	t.Run("int", func(t *testing.T) {
+		testPop(t, int(0), 1, 63, 64, 127, 1000)
 	})
-
+	t.Run("int8", func(t *testing.T) {
+		testPop(t, -128, int8(0), 1, 127)
+	})
+	t.Run("int16", func(t *testing.T) {
+		testPop(t, -32768, int16(0), 1, 255, 256, 32767)
+	})
+	t.Run("int32", func(t *testing.T) {
+		testPop(t, -(1 << 31), int32(0), 1, 1<<16, 1<<31-1)
+	})
+	t.Run("int", func(t *testing.T) {
+		testPop(t, -1017, int(0), 1, 63, 64, 127, 1000)
+	})
 	t.Run("uint8", func(t *testing.T) {
 		testPop(t, uint8(0), 1, 127, 255)
 	})
-
 	t.Run("uint16", func(t *testing.T) {
 		testPop(t, uint16(0), 1, 255, 256, 65535)
 	})
-
 	t.Run("uint32", func(t *testing.T) {
 		testPop(t, uint32(0), 1, 1<<16, 1<<31, ^uint32(0))
+	})
+	t.Run("string", func(t *testing.T) {
+		testPop(t, "", "a", "1234567890", "0123456789")
 	})
 }
 
@@ -1032,6 +1045,21 @@ func TestString(t *testing.T) {
 				t.Errorf("String() = %q, exp %q", got, tc.exp)
 			}
 		})
+	}
+}
+
+func TestStringComparable(t *testing.T) {
+	rstr := roster.New("", " ", "1")
+	if exp, got := "   1", rstr.String(); exp != got {
+		t.Errorf("string roaster: exp: %q, got: %q", exp, got)
+	}
+	istr := roster.New(0, -1017, 42)
+	if exp, got := "-1017 0 42", istr.String(); exp != got {
+		t.Errorf("int roaster: exp: %q, got: %q", exp, got)
+	}
+	fstr := roster.New(-1.0, 0.0, 3.14, 2.71)
+	if exp, got := "-1 0 2.71 3.14", fstr.String(); exp != got {
+		t.Errorf("int roaster: exp: %q, got: %q", exp, got)
 	}
 }
 

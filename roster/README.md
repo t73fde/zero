@@ -1,17 +1,20 @@
 # roster
 
-Package `roster` implements a set of non-negative integers as a sorted array.
+Package `roster` implements a set of ordered values (`cmp.Ordered`) as a
+sorted array.
 
 Values are stored in strictly ascending order without duplicates. Membership
-tests take O(log n); binary set operations merge both operands in a single
-O(n+m) pass.
+tests take O(log n) comparisons. Binary set operations merge both operands in
+a single pass of O(n+m) comparisons.
 
-`roster` is the counterpart to `bitset`:
+`roster` is the counterpart to `bitset` if the element type is restricted to
+non-negative integer values:
 
 | | `bitset` | `roster` |
 |---|---|---|
+| Element types | non-negative integers | any `cmp.Ordered` type, e.g. integers, strings |
 | Memory | proportional to the largest value | proportional to the number of values |
-| Best for | dense value ranges | sparse sets, large values |
+| Best for | dense value ranges | sparse sets, large values, non-integer values |
 
 ## Usage
 
@@ -21,7 +24,7 @@ package main
 import (
 	"fmt"
 
-	"example.com/yourmodule/roster"
+	"t73f.de/r/zero/roster"
 )
 
 func main() {
@@ -39,36 +42,24 @@ func main() {
 	for v := range s.Values() { // ascending order
 		fmt.Println(v)
 	}
+
+	words := roster.New("pear", "apple", "fig")
+	fmt.Println(words) // apple fig pear
 }
 ```
 
-## API overview
+## Ordering and equality
 
-- Constructors: `New`, `Collect`
-- Modification: `Insert`, `Delete`, `DeleteAll`, `Pop`
-- Queries: `Contains`, `Count`, `IsEmpty`, `Min`, `Max`, `Equal`
-- Iteration and output: `Values`, `String`, `WriteTo`
-- Non-mutating set operations: `Union`, `Intersection`, `Difference`,
-  `SymmetricDifference`, `Delta`
-- Mutating set operations: `Or`, `And`, `AndNot`, `Xor`
-- Memory management: `Clone`, `Grow`, `Clip`
-
-## Complexity
-
-| Operation | Time |
-|---|---|
-| `Contains` | O(log n) |
-| `Insert`, `Delete` | O(n) |
-| `Count`, `IsEmpty`, `Min`, `Max`, `Pop` | O(1) |
-| `Union`, `Intersection`, `Difference`, `SymmetricDifference`, `Delta` | O(n+m) |
-| `Or`, `And`, `AndNot`, `Xor` | O(n+m) |
-
-To build a set from many values, use `New` or `Collect` instead of repeated
-`Insert` calls.
+Values are ordered by `cmp.Compare`; values that compare equal are the same
+element. For floating-point types, `0.0` and `-0.0` are one element, and
+`NaN` equals `NaN` and sorts before all other values. Strings are compared
+bytewise, so a comparison costs time proportional to the length of the common
+prefix.
 
 ## Copy semantics
 
 Set operations never modify their operands, and their results never share
 storage with them. A `Roster` is a value type holding a slice: a plain
 assignment (`b := a`) copies only the slice header, and both values then
-share the same storage. An independent copy is obtained only via `Clone`.
+share the same storage. After modifying one of them, the state of the other
+is unspecified. An independent copy is obtained only via `Clone`.
