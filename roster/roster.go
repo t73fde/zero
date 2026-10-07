@@ -88,7 +88,7 @@ func fromUnsorted[V cmp.Ordered](slv []V) Roster[V] {
 		return Roster[V]{}
 	}
 	slices.Sort(slv)
-	return Roster[V]{array: slices.Compact(slv)}
+	return Roster[V]{array: slices.CompactFunc(slv, func(x, y V) bool { return cmp.Compare(x, y) == 0 })}
 
 }
 
@@ -182,7 +182,7 @@ func (r Roster[V]) Max() (V, bool) {
 
 // Equal reports whether r and other contain the same values.
 func (r Roster[V]) Equal(other Roster[V]) bool {
-	return slices.Equal(r.array, other.array)
+	return slices.EqualFunc(r.array, other.array, func(x, y V) bool { return cmp.Compare(x, y) == 0 })
 }
 
 // IsSubset reports whether every value of r is also in other.
@@ -195,17 +195,19 @@ func (r Roster[V]) IsSubset(other Roster[V]) bool {
 	if len(a) > len(b) {
 		return false
 	}
-	j := 0
-	for _, v := range a {
-		for j < len(b) && b[j] < v {
+	i, j := 0, 0
+	for i < len(a) && j < len(b) {
+		switch c := cmp.Compare(a[i], b[j]); {
+		case c < 0:
+			return false
+		case c > 0:
+			j++
+		default:
+			i++
 			j++
 		}
-		if j == len(b) || b[j] != v {
-			return false
-		}
-		j++
 	}
-	return true
+	return i >= len(a)
 }
 
 // Intersects reports whether r and other have at least one value in common.
@@ -216,15 +218,15 @@ func (r Roster[V]) Intersects(other Roster[V]) bool {
 	if len(a) == 0 || len(b) == 0 {
 		return false
 	}
-	if a[len(a)-1] < b[0] || b[len(b)-1] < a[0] {
+	if cmp.Less(a[len(a)-1], b[0]) || cmp.Less(b[len(b)-1], a[0]) {
 		return false
 	}
 	i, j := 0, 0
 	for i < len(a) && j < len(b) {
-		switch {
-		case a[i] < b[j]:
+		switch c := cmp.Compare(a[i], b[j]); {
+		case c < 0:
 			i++
-		case a[i] > b[j]:
+		case c > 0:
 			j++
 		default:
 			return true
@@ -315,11 +317,11 @@ func (r Roster[V]) SymmetricDifference(other Roster[V]) Roster[V] {
 	var result []V
 	i, j := 0, 0
 	for i < len(a) && j < len(b) {
-		switch {
-		case a[i] < b[j]:
+		switch c := cmp.Compare(a[i], b[j]); {
+		case c < 0:
 			result = append(result, a[i])
 			i++
-		case a[i] > b[j]:
+		case c > 0:
 			result = append(result, b[j])
 			j++
 		default: // in both sets: in neither part of the result
@@ -341,11 +343,11 @@ func (r Roster[V]) Delta(other Roster[V]) (onlyR, onlyOther Roster[V]) {
 	a, b := r.array, other.array
 	i, j := 0, 0
 	for i < len(a) && j < len(b) {
-		switch {
-		case a[i] < b[j]:
+		switch c := cmp.Compare(a[i], b[j]); {
+		case c < 0:
 			onlyR.array = append(onlyR.array, a[i])
 			i++
-		case a[i] > b[j]:
+		case c > 0:
 			onlyOther.array = append(onlyOther.array, b[j])
 			j++
 		default:
@@ -380,10 +382,10 @@ func (r *Roster[V]) And(other Roster[V]) {
 	a, b := r.array, other.array
 	w, i, j := 0, 0, 0 // w: next write position in a, always w <= i
 	for i < len(a) && j < len(b) {
-		switch {
-		case a[i] < b[j]:
+		switch c := cmp.Compare(a[i], b[j]); {
+		case c < 0:
 			i++
-		case a[i] > b[j]:
+		case c > 0:
 			j++
 		default:
 			a[w] = a[i]
@@ -400,17 +402,21 @@ func (r *Roster[V]) And(other Roster[V]) {
 // AndNot works in place and does not allocate.
 func (r *Roster[V]) AndNot(other Roster[V]) {
 	a, b := r.array, other.array
-	w, j := 0, 0 // w: next write position in a, always w <= i
-	for i := range a {
-		for j < len(b) && b[j] < a[i] {
+	w, i, j := 0, 0, 0 // w: next write position in a, always w <= i
+	for i < len(a) && j < len(b) {
+		switch c := cmp.Compare(a[i], b[j]); {
+		case c < 0: // a[i] is not in other: keep it
+			a[w] = a[i]
+			w++
+			i++
+		case c > 0:
+			j++
+		default: // a[i] is in other: drop it
+			i++
 			j++
 		}
-		if j < len(b) && b[j] == a[i] {
-			continue // a[i] is in other: drop it
-		}
-		a[w] = a[i]
-		w++
 	}
+	w += copy(a[w:], a[i:]) // remaining tail of a: keep all of it
 	r.array = a[:w]
 }
 
@@ -433,11 +439,11 @@ func union[V cmp.Ordered](a, b []V) []V {
 	result := make([]V, 0, len(a)+len(b))
 	i, j := 0, 0
 	for i < len(a) && j < len(b) {
-		switch {
-		case a[i] < b[j]:
+		switch c := cmp.Compare(a[i], b[j]); {
+		case c < 0:
 			result = append(result, a[i])
 			i++
-		case a[i] > b[j]:
+		case c > 0:
 			result = append(result, b[j])
 			j++
 		default:
