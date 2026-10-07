@@ -94,7 +94,7 @@ func fromUnsorted[V cmp.Ordered](slv []V) Roster[V] {
 
 // ----- Basic set operations
 
-// Insert adds a non-negative integer to the set.
+// Insert adds a value to the set.
 //
 // Insert takes O(n), because subsequent values are shifted. To build a
 // Roster from many values, use New or Collect instead of repeated calls.
@@ -113,7 +113,7 @@ func (r *Roster[V]) InsertSeq(seq iter.Seq[V]) {
 	r.Or(Collect(seq))
 }
 
-// Delete removes a non-negative integer from the set.
+// Delete removes a value from the set.
 //
 // Delete takes O(n), because subsequent values are shifted.
 func (r *Roster[V]) Delete(n V) {
@@ -144,7 +144,7 @@ func (r *Roster[V]) Pop() (V, bool) {
 
 // ----- Queries
 
-// Contains reports whether a non-negative integer is in the set.
+// Contains reports whether a value is in the set.
 func (r Roster[V]) Contains(n V) bool {
 	_, found := slices.BinarySearch(r.array, n)
 	return found
@@ -255,7 +255,7 @@ var _ io.WriterTo = Roster[uint]{}
 // WriteTo writes the roster's values to w, separated by spaces.
 // It returns the number of bytes written and any error encountered.
 func (r Roster[V]) WriteTo(w io.Writer) (n int64, err error) {
-	var buf [21]byte // 20 bytes for digits, one for separator
+	var buf [32]byte // optimized for numeric values.
 	for i, val := range r.array {
 		b := buf[:0]
 		if i > 0 {
@@ -278,7 +278,6 @@ func appendValue[V cmp.Ordered](buf []byte, val V) []byte {
 		return strconv.AppendInt(buf, int64(v), 10)
 	case uint:
 		return strconv.AppendUint(buf, uint64(v), 10)
-	// further fast paths as needed (int64, uint32, ...)
 	default:
 		return fmt.Append(buf, val)
 	}
