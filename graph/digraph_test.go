@@ -79,10 +79,10 @@ func TestDigraphOriginators(t *testing.T) {
 	testcases := []struct {
 		name string
 		dg   graph.EdgeSlice[int]
-		orig *set.Set[int]
-		term *set.Set[int]
+		orig set.Set[int]
+		term set.Set[int]
 	}{
-		{"empty", nil, nil, nil},
+		{"empty", nil, set.Set[int]{}, set.Set[int]{}},
 		{"single", zps{{0, 1}}, set.New(0), set.New(1)},
 		{"chain", zps{{0, 1}, {1, 2}, {2, 3}}, set.New(0), set.New(3)},
 	}
@@ -105,14 +105,14 @@ func TestDigraphReachableVertices(t *testing.T) {
 		name  string
 		pairs graph.EdgeSlice[int]
 		start int
-		exp   *set.Set[int]
+		exp   set.Set[int]
 	}{
-		{"nil", nil, 0, nil},
+		{"nil", nil, 0, set.Set[int]{}},
 		{"0-2", zps{{1, 2}, {2, 3}}, 1, set.New(2, 3)},
 		{"1,2", zps{{1, 2}, {2, 3}}, 2, set.New(3)},
 		{"0-2,1-2", zps{{1, 2}, {2, 3}, {1, 3}}, 1, set.New(2, 3)},
 		{"0-2,1-2/1", zps{{1, 2}, {2, 3}, {1, 3}}, 2, set.New(3)},
-		{"0-2,1-2/2", zps{{1, 2}, {2, 3}, {1, 3}}, 3, nil},
+		{"0-2,1-2/2", zps{{1, 2}, {2, 3}, {1, 3}}, 3, set.Set[int]{}},
 		{"0-2,1-2,3*", zps{{1, 2}, {2, 3}, {1, 3}, {4, 4}}, 1, set.New(2, 3)},
 	}
 

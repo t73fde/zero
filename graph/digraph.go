@@ -23,15 +23,15 @@ import (
 )
 
 // Digraph relates orderable values in a directional way.
-type Digraph[T cmp.Ordered] map[T]*set.Set[T]
+type Digraph[T cmp.Ordered] map[T]set.Set[T]
 
 // AddVertex adds an edge / vertex to the digraph.
 func (dg Digraph[T]) AddVertex(v T) Digraph[T] {
 	if dg == nil {
-		return Digraph[T]{v: nil}
+		return Digraph[T]{v: set.Set[T]{}}
 	}
 	if _, found := dg[v]; !found {
-		dg[v] = nil
+		dg[v] = set.Set[T]{}
 	}
 	return dg
 }
@@ -51,13 +51,11 @@ func (dg Digraph[T]) RemoveVertex(v T) {
 // Both vertices must be added before. Otherwise the function may panic.
 func (dg Digraph[T]) AddEdge(from, to T) Digraph[T] {
 	if dg == nil {
-		return Digraph[T]{from: set.New(to), to: nil}
+		return Digraph[T]{from: set.New(to), to: set.Set[T]{}}
 	}
-	if fromSet := dg[from]; fromSet != nil {
-		fromSet.Insert(to)
-	} else {
-		dg[from] = set.New(to)
-	}
+	fromSet := dg[from]
+	fromSet.Insert(to)
+	dg[from] = fromSet
 	return dg
 }
 
@@ -81,7 +79,7 @@ func (dg Digraph[T]) AddEgdes(edges EdgeSlice[T]) Digraph[T] {
 
 // Equal returns true if both digraphs have the same vertices and edges.
 func (dg Digraph[T]) Equal(other Digraph[T]) bool {
-	return maps.EqualFunc(dg, other, func(cg, co *set.Set[T]) bool { return cg.Equal(co) })
+	return maps.EqualFunc(dg, other, func(cg, co set.Set[T]) bool { return cg.Equal(co) })
 }
 
 // Clone a digraph.
@@ -106,11 +104,10 @@ func (dg Digraph[T]) HasVertex(v T) bool {
 }
 
 // Vertices returns the set of all vertices.
-func (dg Digraph[T]) Vertices() *set.Set[T] {
+func (dg Digraph[T]) Vertices() (verts set.Set[T]) {
 	if len(dg) == 0 {
-		return nil
+		return verts
 	}
-	verts := set.New[T]()
 	for vert := range dg {
 		verts.Insert(vert)
 	}
@@ -129,9 +126,9 @@ func (dg Digraph[T]) Edges() (es EdgeSlice[T]) {
 
 // Originators will return the set of all vertices that are not referenced
 // at the to-part of an edge.
-func (dg Digraph[T]) Originators() *set.Set[T] {
+func (dg Digraph[T]) Originators() set.Set[T] {
 	if len(dg) == 0 {
-		return nil
+		return set.Set[T]{}
 	}
 	origs := dg.Vertices()
 	for _, closure := range dg {
@@ -144,14 +141,10 @@ func (dg Digraph[T]) Originators() *set.Set[T] {
 
 // Terminators returns the set of all vertices that does not reference
 // other vertices.
-func (dg Digraph[T]) Terminators() (terms *set.Set[T]) {
+func (dg Digraph[T]) Terminators() (terms set.Set[T]) {
 	for vert, closure := range dg {
-		if closure.Len() == 0 {
-			if terms == nil {
-				terms = set.New(vert)
-			} else {
-				terms.Insert(vert)
-			}
+		if closure.Count() == 0 {
+			terms.Insert(vert)
 		}
 	}
 	return terms
@@ -162,7 +155,7 @@ func (dg Digraph[T]) TransitiveClosure(v T) (tc Digraph[T]) {
 	if len(dg) == 0 {
 		return nil
 	}
-	var marked *set.Set[T]
+	var marked set.Set[T]
 	stack := []T{v}
 	for pos := len(stack) - 1; pos >= 0; pos = len(stack) - 1 {
 		curr := stack[pos]
@@ -176,20 +169,16 @@ func (dg Digraph[T]) TransitiveClosure(v T) (tc Digraph[T]) {
 			tc = tc.AddEdge(curr, next)
 			stack = append(stack, next)
 		}
-		if marked == nil {
-			marked = set.New(curr)
-		} else {
-			marked.Insert(curr)
-		}
+		marked.Insert(curr)
 	}
 	return tc
 }
 
 // ReachableVertices calculates the set of all vertices that are reachable
 // from the given vertex `startV`.
-func (dg Digraph[T]) ReachableVertices(startV T) (tc *set.Set[T]) {
+func (dg Digraph[T]) ReachableVertices(startV T) (tc set.Set[T]) {
 	if len(dg) == 0 {
-		return nil
+		return set.Set[T]{}
 	}
 	stack := slices.Collect(dg[startV].Values())
 	for last := len(stack) - 1; last >= 0; last = len(stack) - 1 {
@@ -202,11 +191,7 @@ func (dg Digraph[T]) ReachableVertices(startV T) (tc *set.Set[T]) {
 		if !found {
 			continue
 		}
-		if tc == nil {
-			tc = set.New(curr)
-		} else {
-			tc.Insert(curr)
-		}
+		tc.Insert(curr)
 		for next := range closure.Values() {
 			stack = append(stack, next)
 		}
@@ -248,7 +233,7 @@ func (dg Digraph[T]) SortReverse() (sl []T) {
 	tempDg := dg.Clone()
 	for len(tempDg) > 0 {
 		terms := tempDg.Terminators()
-		if terms.Len() == 0 {
+		if terms.IsEmpty() {
 			break
 		}
 		termSlice := slices.Sorted(terms.Values())
