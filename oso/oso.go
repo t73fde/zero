@@ -40,6 +40,20 @@
 //	        return f.Close()
 //	}
 //
+// # Limitations
+//
+// The destination file is always replaced by a new file, it is never modified
+// in place. As a consequence:
+//
+//   - The new file is created with mode 0600 (as done by [os.CreateTemp]),
+//     regardless of the permissions of a previously existing destination.
+//     Permissions, ownership, extended attributes, and hard links of an
+//     existing file are not preserved. If other permissions are needed, set
+//     them after a successful call to [File.Close], e.g. with [os.Chmod].
+//   - If the destination is a symbolic link, the link itself is replaced and
+//     not the file it points to.
+//   - A [File] must not be used concurrently by multiple goroutines.
+//
 // The package is named after the manufacturer of some safes owned by Scrooge McDuck.
 package oso
 
@@ -70,38 +84,34 @@ var (
 )
 
 // SafeWrite creates a new file with the given path.
+//
+// The content is written to a temporary file in the same directory and
+// becomes visible at path only by a successful call to [File.Close].
+// The resulting file has mode 0600, see the package documentation for
+// further limitations.
 func SafeWrite(path string) (*File, error) { return SafeWriteWith(path, "") }
 
 // SafeWriteWith creates a new file with the given path and prefix for the
 // temporary file.
 func SafeWriteWith(path, prefix string) (*File, error) {
 	path = filepath.Clean(path)
-	path, err := filepath.Abs(path)
+	switch filepath.Base(path) {
+	case ".", "..", string(filepath.Separator):
+		return nil, &fs.PathError{Op: "new", Path: path, Err: os.ErrInvalid}
+	}
+	abspath, err := filepath.Abs(path)
 	if err != nil {
 		return nil, &fs.PathError{Op: "new", Path: path, Err: err}
 	}
-	dir, tmpname := filepath.Split(path)
-	if prefix != "" {
-		tmpname = prefix
-	}
-	if tmpname == "" || tmpname == "." || tmpname == ".." {
-		return nil, &fs.PathError{Op: "new", Path: path, Err: os.ErrInvalid}
-	}
-	if dir == "" {
-		dir = "."
-	}
+	dir, tmpname := filepath.Split(abspath)
 	if prefix != "" {
 		tmpname = prefix
 	}
 	tmpf, err := os.CreateTemp(dir, tmpname)
 	if err != nil {
-		return nil, &fs.PathError{Op: "new", Path: path, Err: err}
+		return nil, &fs.PathError{Op: "new", Path: abspath, Err: err}
 	}
-	return &File{
-		path: path,
-		dir:  dir,
-		tmpf: tmpf,
-	}, nil
+	return &File{path: abspath, dir: dir, tmpf: tmpf}, nil
 }
 
 // ----- io.WriteCloser methods
@@ -110,6 +120,9 @@ func SafeWriteWith(path, prefix string) (*File, error) {
 func (f *File) Write(b []byte) (int, error) {
 	if f.err != nil {
 		return 0, f.err
+	}
+	if f.tmpf == nil {
+		return 0, os.ErrClosed
 	}
 	n, err := f.tmpf.Write(b)
 	return n, f.processError(err)
@@ -172,6 +185,9 @@ func (f *File) WriteString(s string) (int, error) {
 	if f.err != nil {
 		return 0, f.err
 	}
+	if f.tmpf == nil {
+		return 0, os.ErrClosed
+	}
 	n, err := f.tmpf.WriteString(s)
 	return n, f.processError(err)
 }
@@ -182,6 +198,9 @@ func (f *File) WriteString(s string) (int, error) {
 func (f *File) ReadFrom(r io.Reader) (int64, error) {
 	if f.err != nil {
 		return 0, f.err
+	}
+	if f.tmpf == nil {
+		return 0, os.ErrClosed
 	}
 	n, err := f.tmpf.ReadFrom(r)
 	return n, f.processError(err)
