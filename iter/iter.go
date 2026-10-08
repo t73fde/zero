@@ -17,8 +17,6 @@ package iter
 import (
 	"iter"
 	"math"
-
-	"t73f.de/r/zero/set"
 )
 
 // EmptySeq returns an empty iterator.
@@ -29,13 +27,18 @@ func OneSeq[V any](elem V) iter.Seq[V] {
 	return func(yield func(V) bool) {
 		yield(elem)
 	}
+
 }
 
 // CatSeq returns an iterator that is the concatenation of all given iterators.
 func CatSeq[V any](seqs ...iter.Seq[V]) iter.Seq[V] {
 	return func(yield func(V) bool) {
 		for _, seq := range seqs {
-			seq(yield)
+			for elem := range seq {
+				if !yield(elem) {
+					return
+				}
+			}
 		}
 	}
 }
@@ -87,64 +90,60 @@ func ReduceSeq[V, W any](seq iter.Seq[V], init W, op func(W, V) W) W {
 }
 
 // DeduplicateSeq returns an iterator with all duplicate values from
-// the original interator removed.
+// the original iterator removed.
 func DeduplicateSeq[V comparable](seq iter.Seq[V]) iter.Seq[V] {
 	return func(yield func(V) bool) {
-		s := set.New[V]()
+		seen := make(map[V]struct{})
 		for elem := range seq {
-			if s.Contains(elem) {
-				continue
-			}
-			s.Insert(elem)
-			if !yield(elem) {
-				return
+			if _, found := seen[elem]; !found {
+				seen[elem] = struct{}{}
+				if !yield(elem) {
+					return
+				}
 			}
 		}
 	}
 }
 
-// CountSeq returns an iterator that counts, starting with 0.
+// CountSeq returns an iterator that counts, starting with 0, up to and
+// including math.MaxInt.
 func CountSeq() iter.Seq[int] {
-	const maxMinusOne = math.MaxInt - 1
 	return func(yield func(int) bool) {
-		for i := range maxMinusOne {
-			if !yield(i) {
+		for i := 0; ; i++ {
+			if !yield(i) || i == math.MaxInt {
 				return
 			}
 		}
-		yield(math.MaxInt)
 	}
 }
 
-// TakeSeq returns an iterator that only has a maximum number of elements.
+// TakeSeq returns an iterator that has at most num elements. It does not
+// request more elements from seq than needed.
 func TakeSeq[V any](num int, seq iter.Seq[V]) iter.Seq[V] {
 	if num <= 0 {
-		return func(func(V) bool) {}
+		return EmptySeq[V]()
 	}
 	return func(yield func(V) bool) {
 		cur := 0
 		for elem := range seq {
-			if cur >= num || !yield(elem) {
+			if !yield(elem) {
 				return
 			}
 			cur++
+			if cur >= num {
+				return
+			}
 		}
 	}
 }
 
-// ZipSeq returns an iterator that is an K/V iterator of the given two iterators.
-// I.e. is produces pairs.
+// ZipSeq returns an iterator of pairs, built from the elements of the two
+// given iterators. It ends with the shorter of both.
 func ZipSeq[K, V any](kseq iter.Seq[K], vseq iter.Seq[V]) iter.Seq2[K, V] {
 	return func(yield func(K, V) bool) {
-		knext, kdone := iter.Pull(kseq)
-		vnext, vdone := iter.Pull(vseq)
-		defer kdone()
-		defer vdone()
-		for {
-			k, ok := knext()
-			if !ok {
-				return
-			}
+		vnext, vstop := iter.Pull(vseq)
+		defer vstop()
+		for k := range kseq {
 			v, ok := vnext()
 			if !ok || !yield(k, v) {
 				return
@@ -171,6 +170,20 @@ func ValSeq[K, V any](seq iter.Seq2[K, V]) iter.Seq[V] {
 			if !yield(v) {
 				return
 			}
+		}
+	}
+}
+
+// EnumerateSeq retruns an iterator that adds a number to each value of the
+// given iterator.
+func EnumerateSeq[V any](seq iter.Seq[V]) iter.Seq2[int, V] {
+	return func(yield func(int, V) bool) {
+		i := 0
+		for v := range seq {
+			if !yield(i, v) || i == math.MaxInt {
+				return
+			}
+			i++
 		}
 	}
 }
