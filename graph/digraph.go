@@ -23,9 +23,13 @@ import (
 )
 
 // Digraph relates orderable values in a directional way.
+//
+// Conventions: Every vertex is a key of the map, including vertices without
+// outgoing edges. Methods returning a digraph return nil for an empty result.
+// Methods returning a set always return a non-nil set.
 type Digraph[T cmp.Ordered] map[T]set.Set[T]
 
-// AddVertex adds an edge / vertex to the digraph.
+// AddVertex adds a vertex to the digraph.
 func (dg Digraph[T]) AddVertex(v T) Digraph[T] {
 	if dg == nil {
 		return Digraph[T]{v: set.Set[T]{}}
@@ -50,19 +54,17 @@ func (dg Digraph[T]) RemoveVertex(v T) {
 // AddEdge adds a connection from `from` to `to`.
 // Both vertices must be added before. Otherwise the function may panic.
 func (dg Digraph[T]) AddEdge(from, to T) Digraph[T] {
-	if dg == nil {
-		return Digraph[T]{from: set.New(to), to: set.Set[T]{}}
-	}
+	dg = dg.AddVertex(from).AddVertex(to)
 	fromSet := dg[from]
 	fromSet.Insert(to)
 	dg[from] = fromSet
 	return dg
 }
 
-// AddEgdes adds all given `Edge`s to the digraph.
+// AddEdges adds all given `Edge`s to the digraph.
 //
 // In contrast to `AddEdge` the vertices must not exist before.
-func (dg Digraph[T]) AddEgdes(edges EdgeSlice[T]) Digraph[T] {
+func (dg Digraph[T]) AddEdges(edges EdgeSlice[T]) Digraph[T] {
 	if dg == nil {
 		if len(edges) == 0 {
 			return nil
@@ -70,8 +72,6 @@ func (dg Digraph[T]) AddEgdes(edges EdgeSlice[T]) Digraph[T] {
 		dg = make(Digraph[T], len(edges))
 	}
 	for _, edge := range edges {
-		dg = dg.AddVertex(edge.From)
-		dg = dg.AddVertex(edge.To)
 		dg = dg.AddEdge(edge.From, edge.To)
 	}
 	return dg
@@ -96,18 +96,12 @@ func (dg Digraph[T]) Clone() Digraph[T] {
 
 // HasVertex returns true, if `v` is a vertex of the digraph.
 func (dg Digraph[T]) HasVertex(v T) bool {
-	if len(dg) == 0 {
-		return false
-	}
 	_, found := dg[v]
 	return found
 }
 
 // Vertices returns the set of all vertices.
 func (dg Digraph[T]) Vertices() (verts set.Set[T]) {
-	if len(dg) == 0 {
-		return verts
-	}
 	for vert := range dg {
 		verts.Insert(vert)
 	}
@@ -127,9 +121,6 @@ func (dg Digraph[T]) Edges() (es EdgeSlice[T]) {
 // Originators will return the set of all vertices that are not referenced
 // at the to-part of an edge.
 func (dg Digraph[T]) Originators() set.Set[T] {
-	if len(dg) == 0 {
-		return set.Set[T]{}
-	}
 	origs := dg.Vertices()
 	for _, closure := range dg {
 		for c := range closure.Values() {
@@ -143,7 +134,7 @@ func (dg Digraph[T]) Originators() set.Set[T] {
 // other vertices.
 func (dg Digraph[T]) Terminators() (terms set.Set[T]) {
 	for vert, closure := range dg {
-		if closure.Count() == 0 {
+		if closure.IsEmpty() {
 			terms.Insert(vert)
 		}
 	}
@@ -151,59 +142,87 @@ func (dg Digraph[T]) Terminators() (terms set.Set[T]) {
 }
 
 // TransitiveClosure calculates the sub-graph that is reachable from `v`.
+//
+// The result contains `v` and all vertices reachable from it, together with
+// the edges between them. If `v` is not a vertex, nil is returned.
 func (dg Digraph[T]) TransitiveClosure(v T) (tc Digraph[T]) {
-	if len(dg) == 0 {
+	if !dg.HasVertex(v) {
 		return nil
 	}
 	var marked set.Set[T]
 	stack := []T{v}
-	for pos := len(stack) - 1; pos >= 0; pos = len(stack) - 1 {
-		curr := stack[pos]
-		stack = stack[:pos]
-		if marked.Contains(curr) {
-			continue
-		}
+	for len(stack) > 0 {
+		last := len(stack) - 1
+		curr := stack[last]
+		stack = stack[:last]
 		tc = tc.AddVertex(curr)
 		for next := range dg[curr].Values() {
-			tc = tc.AddVertex(next)
 			tc = tc.AddEdge(curr, next)
-			stack = append(stack, next)
+			if !marked.Contains(next) {
+				marked.Insert(next)
+				stack = append(stack, next)
+			}
 		}
-		marked.Insert(curr)
 	}
 	return tc
 }
 
 // ReachableVertices calculates the set of all vertices that are reachable
-// from the given vertex `startV`.
-func (dg Digraph[T]) ReachableVertices(startV T) (tc set.Set[T]) {
+// via at least one edge from the given vertex `startV`.
+//
+// `startV` is part of the result only if it lies on a cycle.
+func (dg Digraph[T]) ReachableVertices(startV T) (reached set.Set[T]) {
 	if len(dg) == 0 {
 		return set.Set[T]{}
 	}
 	stack := slices.Collect(dg[startV].Values())
-	for last := len(stack) - 1; last >= 0; last = len(stack) - 1 {
+	for len(stack) > 0 {
+		last := len(stack) - 1
 		curr := stack[last]
 		stack = stack[:last]
-		if tc.Contains(curr) {
+		if reached.Contains(curr) {
 			continue
 		}
-		closure, found := dg[curr]
-		if !found {
-			continue
-		}
-		tc.Insert(curr)
-		for next := range closure.Values() {
+		reached.Insert(curr)
+		for next := range dg[curr].Values() {
 			stack = append(stack, next)
 		}
 	}
-	return tc
+	return reached
 }
 
-// IsDAG returns a vertex and false, if the graph has a cycle containing the vertex.
+// IsDAG returns a vertex and false, if the graph has a cycle containing the
+// vertex. Otherwise it returns the zero value and true.
+//
+// Runs in O(V+E).
 func (dg Digraph[T]) IsDAG() (T, bool) {
-	for vertex := range dg {
-		if dg.ReachableVertices(vertex).Contains(vertex) {
-			return vertex, false
+	const (
+		unvisited int8 = iota
+		active
+		done
+	)
+	state := make(map[T]int8, len(dg))
+	var cycleVertex T
+	var visit func(T) bool
+	visit = func(v T) bool {
+		state[v] = active
+		for next := range dg[v].Values() {
+			switch state[next] {
+			case active:
+				cycleVertex = next
+				return false
+			case unvisited:
+				if !visit(next) {
+					return false
+				}
+			}
+		}
+		state[v] = done
+		return true
+	}
+	for v := range dg {
+		if state[v] == unvisited && !visit(v) {
+			return cycleVertex, false
 		}
 	}
 	var zeroT T
@@ -215,7 +234,6 @@ func (dg Digraph[T]) Reverse() (revDg Digraph[T]) {
 	for vertex, closure := range dg {
 		revDg = revDg.AddVertex(vertex)
 		for next := range closure.Values() {
-			revDg = revDg.AddVertex(next)
 			revDg = revDg.AddEdge(next, vertex)
 		}
 	}
@@ -224,24 +242,42 @@ func (dg Digraph[T]) Reverse() (revDg Digraph[T]) {
 
 // SortReverse returns a deterministic, topological, reverse sort of the digraph.
 //
-// Works only if digraph is a DAG. Otherwise the algorithm will not terminate
-// or returns an arbitrary value.
+// Vertices are emitted level by level: first all vertices without outgoing
+// edges (descending), then all vertices whose successors have been emitted, etc.
+//
+// If the digraph contains a cycle, the vertices on a cycle and all vertices
+// that reach a cycle are omitted. Check with `IsDAG` beforehand if a complete
+// result is required.
+//
+// Runs in O(V+E) plus the cost of sorting each level.
 func (dg Digraph[T]) SortReverse() (sl []T) {
 	if len(dg) == 0 {
 		return nil
 	}
-	tempDg := dg.Clone()
-	for len(tempDg) > 0 {
-		terms := tempDg.Terminators()
-		if terms.IsEmpty() {
-			break
+	outDegree := make(map[T]int, len(dg))
+	var level []T
+	for v, closure := range dg {
+		n := closure.Count()
+		outDegree[v] = n
+		if n == 0 {
+			level = append(level, v)
 		}
-		termSlice := slices.Sorted(terms.Values())
-		slices.Reverse(termSlice)
-		sl = append(sl, termSlice...)
-		for t := range terms.Values() {
-			tempDg.RemoveVertex(t)
+	}
+	rev := dg.Reverse()
+	for len(level) > 0 {
+		slices.Sort(level)
+		slices.Reverse(level)
+		sl = append(sl, level...)
+		var nextLevel []T
+		for _, v := range level {
+			for pred := range rev[v].Values() {
+				outDegree[pred]--
+				if outDegree[pred] == 0 {
+					nextLevel = append(nextLevel, pred)
+				}
+			}
 		}
+		level = nextLevel
 	}
 	return sl
 }

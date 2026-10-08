@@ -26,27 +26,16 @@ type Edge[T cmp.Ordered] struct {
 // EdgeSlice is a slice of Edges
 type EdgeSlice[T cmp.Ordered] []Edge[T]
 
-// Equal return true if both slices are the same.
+// Equal returns true if both slices contain the same edges in the same order.
 func (es EdgeSlice[T]) Equal(other EdgeSlice[T]) bool {
 	return slices.Equal(es, other)
 }
 
-// Sort the slice.
+// Sort the slice in-place, ordered by From, then by To.
+// The sorted slice is returned for chaining.
 func (es EdgeSlice[T]) Sort() EdgeSlice[T] {
-	slices.SortFunc(es, func(e1, e2 Edge[T]) int {
-		if e1.From < e2.From {
-			return -1
-		}
-		if e1.From > e2.From {
-			return 1
-		}
-		if e1.To < e2.To {
-			return -1
-		}
-		if e1.To > e2.To {
-			return 1
-		}
-		return 0
+	slices.SortFunc(es, func(a, b Edge[T]) int {
+		return cmp.Or(cmp.Compare(a.From, b.From), cmp.Compare(a.To, b.To))
 	})
 	return es
 }
