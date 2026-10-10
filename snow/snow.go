@@ -11,7 +11,7 @@
 // SPDX-FileCopyrightText: 2023-present Detlef Stern
 // -----------------------------------------------------------------------------
 
-// Package snow provides a generic key to be used as an URI element, as a
+// Package snow provides a generic key to be used as a URI element, as a
 // primary key in a database, or for other usage.
 package snow
 
@@ -26,7 +26,7 @@ import (
 // Key is the generic, external primary key for all data.
 //
 // Snowflake/TSID:
-// * 42 bit timestamp, enough to be used in the year 2160.
+// * 42 bit timestamp, enough to be used in the year 2163.
 // * 22 bit application / sequence number
 //   - 0-20 bit application defined data, e.g. for tables, nodes, ...
 //   - 2-22 bit sequence number
@@ -34,7 +34,7 @@ import (
 // The timestamp value starts at 2024-06-01. 42 bits of milliseconds allow an
 // end date in the year 2163.
 //
-// The rest of the 64 bits, ie 22 bits can be splitted at the users demand.
+// The rest of the 64 bits, ie 22 bits can be split at the users demand.
 // Two bits are always reserved to be used as a sequence number if two keys are
 // generated within the same millisecond. This can be enlarged up 22 bits.
 // A maximum of 20 bits can be used for the application. The more bits are
@@ -78,12 +78,12 @@ func Parse(s string) (Key, error) {
 				continue
 			}
 		}
-		return result, fmt.Errorf("non base-32 character %c/%v found", ch, ch)
+		return Invalid, fmt.Errorf("non base-32 character %c/%v found", ch, ch)
 	}
 	return result, nil
 }
 
-// ErrEmptyKey signals the an empty string was used to parse it into a [Key].
+// ErrEmptyKey signals that an empty string was used to parse it into a [Key].
 var ErrEmptyKey = errors.New("empty key")
 
 // MustParse parses the string into an external key, and panics if that is not possible.
@@ -98,7 +98,7 @@ func MustParse(s string) Key {
 // IsInvalid returns true if the key is definitely an invalid key.
 func (key Key) IsInvalid() bool { return key == Invalid }
 
-// IsValid returns true if the key is definitely an invalid key.
+// IsValid returns true if the key is not invalid.
 func (key Key) IsValid() bool { return key != Invalid }
 
 var decode32map = [...]int8{
@@ -106,7 +106,7 @@ var decode32map = [...]int8{
 	-1, 10, 11, 12, 13, 14, 15, 16, 17, 1, 18, 19, 1, 20, 21, 0, // 0x40 .. 0x4f
 	22, 23, 24, 25, 26, 36, 27, 28, 29, 30, 31, -1, -1, -1, -1, -1, // 0x50 .. 0x5f
 	-1, 10, 11, 12, 13, 14, 15, 16, 17, 1, 18, 19, 1, 20, 21, 0, // 0x60 .. 0x6f
-	22, 23, 24, 25, 26, -1, 27, 28, 29, 30, 31, -1, -1, -1, -1, -1, // 0x70 .. 0x7f
+	22, 23, 24, 25, 26, 36, 27, 28, 29, 30, 31, -1, -1, -1, -1, -1, // 0x70 .. 0x7f
 }
 
 // Time returns the timestamp value, when the key was generated.
@@ -159,7 +159,7 @@ var sepMask = []uint16{
 // is correctly, in the general case.
 //
 // A group size less than one is interpreted as a group size of one. If the
-// spearator is the emptay string, or if group size is greater than 12, no
+// separator is the empty string, or if group size is greater than 12, no
 // separators are included, returning just the 13 base-32 digits of the key.
 //
 // For example: Invalid.Format(4, "") == "0000000000000", and
@@ -211,7 +211,7 @@ func (key Key) reverseEncode() ([13]byte, int) {
 
 const base32chars = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
-// Generator is a generator for unique keys as int64.
+// Generator is a generator for unique keys as uint64.
 type Generator struct {
 	mx      sync.Mutex // Protects the next two fields
 	lastTS  int64      // Last timestamp
@@ -224,7 +224,7 @@ type Generator struct {
 // application use.
 func New(appBits uint) *Generator {
 	if appBits > MaxAppBits {
-		panic(fmt.Sprintf("key generator need too many bits (max %d): %v", appBits, MaxAppBits))
+		panic(fmt.Sprintf("key generator need too many bits (max %d): %v", MaxAppBits, appBits))
 	}
 	return &Generator{
 		appBits: appBits,
@@ -244,10 +244,13 @@ func (gen *Generator) Create(appID uint) Key {
 		panic(fmt.Errorf("application value out of range: %v (max: %v)", appID, gen.appMax))
 	}
 	for {
-		milli := int64(time.Now().UnixMilli())
 		var seq uint64
 
 		gen.mx.Lock()
+		milli := int64(time.Now().UnixMilli())
+		if milli < gen.lastTS {
+			milli = gen.lastTS // clock went backwards: keep monotonic
+		}
 		if milli > gen.lastTS {
 			gen.lastTS = milli
 			gen.nextSeq = 1
@@ -260,11 +263,11 @@ func (gen *Generator) Create(appID uint) Key {
 
 		if seq < (1 << (randomBits - gen.appBits)) {
 			ts := milli - epochAdjust
-			if ts > maxTimeStamp {
-				panic(fmt.Sprintf("timestamp %v exceeds largest possible value %v", ts, maxTimeStamp))
+			if ts < 0 || ts > maxTimeStamp {
+				panic(fmt.Sprintf("timestamp %v out of range [0, %v]", ts, maxTimeStamp))
 			}
 
-			// 42bit=ts, kg.intBits=appId, 22-kg.intBits=seq
+			// 42bit=ts, kg.appBits=appId, 22-kg.appBits=seq
 			k := (uint64(ts) << randomBits) | (uint64(appID) << (randomBits - gen.appBits)) | seq
 			return Key(k)
 		}
