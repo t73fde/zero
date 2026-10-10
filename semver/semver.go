@@ -17,10 +17,10 @@
 //
 //	MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
 //
-// where square brackets indicate optional parts. MAJOR, MINMOR, and PATCH are
+// where square brackets indicate optional parts. MAJOR, MINOR, and PATCH are
 // decimal numbers without leading zeroes; PRERELEASE and BUILD are each one or
 // more sequences of alphanumeric characters, separated by dots.
-// PRERELEASE must not have leading zeroes.
+// A numeric PRERELEASE must not have leading zeroes.
 //
 // This package follows Semantic Versioning 2.0.0 (see semver.org).
 package semver
@@ -47,7 +47,7 @@ var (
 	reBuild      = regexp.MustCompile(`^` + rexsBuild + `?$`)
 )
 
-// Parse a string as a semantic version string.
+// Parse parses a string as a semantic version string.
 func Parse(s string) (SemVer, bool) {
 	if m := reSemVer.FindStringSubmatch(s); len(m) > 0 {
 		if major, errMajor := strconv.Atoi(m[1]); errMajor == nil {
@@ -118,7 +118,7 @@ func (v SemVer) String() string {
 	return sb.String()
 }
 
-// Compare two semantic versions.
+// Compare returns -1, 0, or +1 by comparing two semantic versions.
 func (v SemVer) Compare(o SemVer) int {
 	if c := cmp.Compare(v.Major, o.Major); c != 0 {
 		return c
@@ -139,14 +139,35 @@ func (v SemVer) Compare(o SemVer) int {
 	}
 	vs := strings.Split(vp, ".")
 	os := strings.Split(op, ".")
-	return slices.CompareFunc(vs, os, func(ve, oe string) int {
-		if vi, errV := strconv.ParseUint(ve, 10, 64); errV == nil {
-			if oi, errO := strconv.ParseUint(oe, 10, 64); errO == nil {
-				return cmp.Compare(vi, oi)
-			}
+	return slices.CompareFunc(vs, os, compareIdent)
+}
+
+func compareIdent(a, b string) int {
+	aNum, bNum := isDigits(a), isDigits(b)
+	switch {
+	case aNum && bNum:
+		if c := cmp.Compare(len(a), len(b)); c != 0 {
+			return c
 		}
-		return strings.Compare(ve, oe)
-	})
+		return strings.Compare(a, b)
+	case aNum:
+		return -1
+	case bNum:
+		return 1
+	}
+	return strings.Compare(a, b)
+}
+
+func isDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // Compatible returns true, if the given new version is compatible to the first.
