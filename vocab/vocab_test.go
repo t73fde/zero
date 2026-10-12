@@ -99,8 +99,8 @@ func checkInvariants(t *testing.T, v *Vocabulary) {
 			t.Fatalf("Lookup(%q) = %d, want %d", w, got, id)
 		}
 	}
-	if occupied != v.Len() {
-		t.Fatalf("%d occupied positions, but Len() = %d", occupied, v.Len())
+	if occupied != v.Count() {
+		t.Fatalf("%d occupied positions, but Len() = %d", occupied, v.Count())
 	}
 	// Robin Hood: an entry is at most one step farther from its home position
 	// than its predecessor.
@@ -114,16 +114,16 @@ func checkInvariants(t *testing.T, v *Vocabulary) {
 			t.Fatalf("Robin Hood invariant violated between positions %d and %d", i, j)
 		}
 	}
-	if v.Len()*loadDen > len(v.hashes)*loadNum {
-		t.Fatalf("load factor exceeded: %d words, %d positions", v.Len(), len(v.hashes))
+	if v.Count()*loadDen > len(v.hashes)*loadNum {
+		t.Fatalf("load factor exceeded: %d words, %d positions", v.Count(), len(v.hashes))
 	}
 }
 
 // verify compares v completely with the reference model m.
 func verify(t *testing.T, v *Vocabulary, m *model) {
 	t.Helper()
-	if v.Len() != len(m.words) {
-		t.Fatalf("Len() = %d, want %d", v.Len(), len(m.words))
+	if v.Count() != len(m.words) {
+		t.Fatalf("Len() = %d, want %d", v.Count(), len(m.words))
 	}
 	for i, w := range m.words {
 		id := WordID(i + 1)
@@ -273,8 +273,8 @@ func TestAddTooLong(t *testing.T) {
 	v.AddBytes([]byte("House"))
 	tooLong := make([]byte, MaxWordLen+1)
 	assertPanics(t, "AddBytes(too long)", func() { v.AddBytes(tooLong) })
-	if v.Len() != 1 || v.StoreLen() != 0 {
-		t.Errorf("state changed by panic: Len = %d, StoreLen = %d", v.Len(), v.StoreLen())
+	if v.Count() != 1 || v.StoreLen() != 0 {
+		t.Errorf("state changed by panic: Len = %d, StoreLen = %d", v.Count(), v.StoreLen())
 	}
 	if id := v.Lookup(tooLong); id != 0 {
 		t.Errorf("Lookup(too long) = %d, want 0", id)
@@ -478,8 +478,8 @@ func TestIteratorSnapshot(t *testing.T) {
 	if !slices.Equal(got, []WordID{1, 2}) {
 		t.Errorf("visited %v, want [1 2]", got)
 	}
-	if v.Len() != 102 {
-		t.Errorf("Len() = %d, want 102", v.Len())
+	if v.Count() != 102 {
+		t.Errorf("Len() = %d, want 102", v.Count())
 	}
 	checkInvariants(t, v)
 }
@@ -549,8 +549,8 @@ func TestStoreFull(t *testing.T) {
 		t.Fatalf("StoreLen = %d, want 60", v.StoreLen())
 	}
 	assertPanics(t, "AddBytes(store full)", func() { v.AddBytes(long2) })
-	if v.Len() != 1 || v.StoreLen() != 60 {
-		t.Errorf("state changed by panic: Len = %d, StoreLen = %d", v.Len(), v.StoreLen())
+	if v.Count() != 1 || v.StoreLen() != 60 {
+		t.Errorf("state changed by panic: Len = %d, StoreLen = %d", v.Count(), v.StoreLen())
 	}
 	// Known long words and inline words are still accepted.
 	if got := v.AddBytes(long1); got != id1 {
@@ -578,8 +578,8 @@ func TestWordsFull(t *testing.T) {
 	}
 	// A long new word must be rejected before it reaches the store.
 	assertPanics(t, "AddBytes(too many words)", func() { v.AddBytes(bytes.Repeat([]byte("x"), 100)) })
-	if v.Len() != 3 || v.StoreLen() != 0 {
-		t.Errorf("state changed by panic: Len = %d, StoreLen = %d", v.Len(), v.StoreLen())
+	if v.Count() != 3 || v.StoreLen() != 0 {
+		t.Errorf("state changed by panic: Len = %d, StoreLen = %d", v.Count(), v.StoreLen())
 	}
 	// Known words are still accepted.
 	if got := v.AddBytes([]byte("b")); got != 2 {
@@ -591,7 +591,7 @@ func TestWordsFull(t *testing.T) {
 func TestWordsZero(t *testing.T) {
 	v := New(0, WithMaxWords(0))
 	assertPanics(t, "Add", func() { v.AddBytes([]byte("a")) })
-	if v.Lookup([]byte("a")) != 0 || v.Len() != 0 {
+	if v.Lookup([]byte("a")) != 0 || v.Count() != 0 {
 		t.Error("empty Vocabulary changed")
 	}
 }

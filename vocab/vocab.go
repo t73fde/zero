@@ -31,7 +31,8 @@
 //
 // Limits: a word is at most `MaxWordLen` bytes long, and the store of long
 // words holds at most `MaxStoreLen` bytes. `Add` panics if one of these
-// limits would be exceeded; `StoreLen` allows callers to check beforehand.
+// limits would be exceeded. `Count` and `StoreLen` allows callers to check
+// beforehand.
 //
 // A Vocabulary is NOT safe for concurrent use.
 package vocab
@@ -170,8 +171,8 @@ func WithMaxStoreLen(n int) Option {
 	}
 }
 
-// Len returns the number of distinct words.
-func (v *Vocabulary) Len() int { return len(v.ids) - 1 }
+// Count returns the number of distinct words.
+func (v *Vocabulary) Count() int { return len(v.ids) - 1 }
 
 // StoreLen returns the current length of the store for long words in bytes.
 func (v *Vocabulary) StoreLen() int { return len(v.store) }

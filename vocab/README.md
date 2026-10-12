@@ -59,7 +59,7 @@ v := vocab.New(0,
 
 `Add` panics before it modifies the `Vocabulary`, so the state stays
 consistent. Adding a known word never panics. Callers that want to avoid
-panics can check `Len` and `StoreLen` beforehand.
+panics can check `Count` and `StoreLen` beforehand.
 
 ## Concurrency
 
