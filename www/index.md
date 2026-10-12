@@ -6,7 +6,7 @@ This is a collection of utility functions for building applications in
 * [bitset](/dir?ci=tip&name=bitset): A simple bitset implementation.
 * [clock](/dir?ci=tip&name=clock): Abstraction over current time.
 * [contexts](/dir?ci=tip&name=contexts): Functions to work with context values.
-* [denso](/dir?ci=tip&name=denso): A mapping of comparable values to dense
+* [dense](/dir?ci=tip&name=dense): A mapping of comparable values to dense
   values.
 * [graph](/dir?ci=tip&name=graph): A simple directed graph.
 * [iter](/dir?ci=tip&name=iter): Additional functions for combining iterators.
