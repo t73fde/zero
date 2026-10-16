@@ -335,3 +335,12 @@ func (v *Vocabulary) WriteTo(w io.Writer, id WordID) (int64, error) {
 	}
 	return total, nil
 }
+
+// WordCount returns for each word length the number of words.
+func (v *Vocabulary) WordCount() map[uint16]int {
+	result := make(map[uint16]int, 32)
+	for _, word := range v.ids[1:] {
+		result[word.len]++
+	}
+	return result
+}
