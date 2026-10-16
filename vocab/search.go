@@ -21,8 +21,7 @@ import (
 // The searches below are deliberately written out separately instead of
 // sharing a generic filter loop. Each one can be optimized on its own (for
 // example by a different use of the prefix cache) without a function call per
-// word. Their logic mirrors the ...Bytes predicates above; the tests should
-// check that both variants agree.
+// word.
 //
 // All iterators work on a snapshot taken when the iteration starts: words
 // added meanwhile are not visited.
