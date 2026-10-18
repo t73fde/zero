@@ -48,6 +48,9 @@ import (
 // 1; the zero value means "no word".
 type WordID uint32
 
+// InvalidWordID is the one and only invalid WordID.
+const InvalidWordID = WordID(0)
+
 const (
 	// MaxWordLen is the maximum length of a word in bytes.
 	MaxWordLen = math.MaxUint16
@@ -199,7 +202,7 @@ func (v *Vocabulary) AddString(s string) WordID {
 // than MaxWordLen cannot be present; Lookup does not panic for them.
 func (v *Vocabulary) Lookup(b []byte) WordID {
 	if len(b) > MaxWordLen {
-		return 0
+		return InvalidWordID
 	}
 	return v.probe(b, v.hash(b))
 }
@@ -213,7 +216,7 @@ func (v *Vocabulary) add(b []byte) WordID {
 		panic("vocab: word too long")
 	}
 	h := v.hash(b)
-	if id := v.probe(b, h); id != 0 {
+	if id := v.probe(b, h); id != InvalidWordID {
 		return id
 	}
 	// len(v.ids) is the number of words including the one to be added.
@@ -255,12 +258,12 @@ func (v *Vocabulary) probe(b []byte, h uint64) WordID {
 	for d := uint64(0); ; d++ {
 		hi := v.hashes[i]
 		if hi == 0 {
-			return 0 // free position: b is not present
+			return InvalidWordID // free position: b is not present
 		}
 		if v.dist(hi, i) < d {
 			// Robin Hood invariant: had b been inserted, it would have
 			// displaced this closer-to-home entry. So b is not present.
-			return 0
+			return InvalidWordID
 		}
 		if hi == h {
 			if id := v.hashedIDs[i]; v.EqualBytes(id, b) {

@@ -84,7 +84,7 @@ func checkInvariants(t *testing.T, v *Vocabulary) {
 		}
 		occupied++
 		id := v.hashedIDs[i]
-		if id == 0 || int(id) >= len(v.ids) {
+		if id == InvalidWordID || int(id) >= len(v.ids) {
 			t.Fatalf("position %d: invalid id %d", i, id)
 		}
 		if seen[id] {
@@ -363,7 +363,7 @@ func TestWriteTo(t *testing.T) {
 	word := []byte("HelloWorld")
 	v.AddBytes(word)
 	id := v.Lookup(word)
-	if id == 0 {
+	if id == InvalidWordID {
 		panic("not found")
 	}
 
@@ -525,7 +525,7 @@ func TestRandomAgainstModel(t *testing.T) {
 			// Unknown words are not found.
 			for range 100 {
 				w := randomWord(rng, 40)
-				if _, known := m.ids[w]; !known && v.Lookup([]byte(w)) != 0 {
+				if _, known := m.ids[w]; !known && v.Lookup([]byte(w)) != InvalidWordID {
 					t.Fatalf("Lookup(%q) found an unknown word", w)
 				}
 			}
@@ -556,7 +556,7 @@ func TestStoreFull(t *testing.T) {
 	if got := v.AddBytes(long1); got != id1 {
 		t.Errorf("AddBytes(known long word) = %d, want %d", got, id1)
 	}
-	if got := v.AddBytes([]byte("Haus")); got == 0 {
+	if got := v.AddBytes([]byte("Haus")); got == InvalidWordID {
 		t.Error("AddBytes(inline word) failed")
 	}
 	checkInvariants(t, v)
@@ -564,7 +564,7 @@ func TestStoreFull(t *testing.T) {
 
 func TestStoreLenZero(t *testing.T) {
 	v := New(0, WithMaxStoreLen(0))
-	if v.AddBytes([]byte("Haus")) == 0 { // inline words need no store
+	if v.AddBytes([]byte("Haus")) == InvalidWordID { // inline words need no store
 		t.Fatal("AddBytes(inline word) failed")
 	}
 	assertPanics(t, "AddBytes(long word)", func() { v.AddBytes(bytes.Repeat([]byte("a"), payloadLen+1)) })
