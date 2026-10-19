@@ -12,94 +12,128 @@
 // -----------------------------------------------------------------------------
 
 // Package dense provides a bijection between comparable keys and dense
-// unsigned integer codes.
+// unsigned integer values.
 //
-// Codes are assigned in order of first use, starting at 0. When a key is
-// deleted, its code is freed and reused by the next new key (most recently
-// freed first). Callers must remove a freed code from every structure
+// Values are assigned in order of first use, starting at 0. When a key is
+// removed, its value is freed and reused by the next new key (most recently
+// freed first). Callers must remove a freed value from every structure
 // derived from it, otherwise that structure refers to the next key that
-// receives the code. The order of the codes reflects neither the order of
-// the keys nor strictly the order of insertion.
+// receives the value. Therefore, the order of the values reflects neither
+// the order of the keys nor, after a removal, the order of insertion.
+//
+// Keys must be equal to themselves, that is, key == key must hold. This
+// excludes floating-point NaN as well as arrays, structs, and interface
+// values that contain a NaN. Such keys can never be found again, so every
+// Encode of one creates a new entry that neither Find nor RemoveKey can
+// reach, and Count becomes unreliable. As with Go maps, an interface-typed
+// key whose dynamic type is not comparable causes a run-time panic.
 //
 // A Dense is not safe for concurrent use. The zero value is an empty Dense
 // ready to use. A Dense must not be copied after first use.
 package dense
 
-// Value is the set of types that are usable as codes.
+// Value is the set of types that are usable as values of a Dense.
 type Value interface {
 	~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64
 }
 
-// Dense is a bijection between keys of type K and codes of type V.
-// All codes in use are less than Limit().
+// Dense is a bijection between keys of type K and values of type V.
+// All values in use are less than Limit().
 type Dense[K comparable, V Value] struct {
-	codes map[K]V
-	keys  []K
-	used  []bool
-	free  []V
+	values map[K]V
+	keys   []K
+	used   []bool
+	free   []V
 }
 
-// Encode returns the code of key. If key is not yet known, a code is
-// assigned: a freed code if available, otherwise the next unused one.
+// Encode returns the val of key. If key is not yet known, a value is
+// assigned: a freed val if available, otherwise the next unused one.
 // It panics if the value range of V is exhausted.
+// The key must satisfy key == key (see package documentation).
 func (d *Dense[K, V]) Encode(key K) V {
-	if code, found := d.codes[key]; found {
-		return code
+	if val, found := d.values[key]; found {
+		return val
 	}
-	var code V
+	var val V
 	if n := len(d.free); n > 0 {
-		code = d.free[n-1]
+		val = d.free[n-1]
 		d.free = d.free[:n-1]
-		d.keys[code] = key
-		d.used[code] = true
+		d.keys[val] = key
+		d.used[val] = true
 	} else {
-		code = V(len(d.keys))
-		if int(code) != len(d.keys) {
-			panic("dense: code range exhausted")
+		val = V(len(d.keys))
+		if int(val) != len(d.keys) {
+			panic("dense: value range exhausted")
 		}
 		d.keys = append(d.keys, key)
 		d.used = append(d.used, true)
 	}
-	if d.codes == nil {
-		d.codes = make(map[K]V)
+	if d.values == nil {
+		d.values = make(map[K]V)
 	}
-	d.codes[key] = code
-	return code
+	d.values[key] = val
+	return val
 }
 
-// Find returns the code of key without assigning a new one.
+// Find returns the value of key without assigning a new one.
 func (d *Dense[K, V]) Find(key K) (V, bool) {
-	code, found := d.codes[key]
-	return code, found
+	val, found := d.values[key]
+	return val, found
 }
 
-// Decode returns the key that belongs to code.
-func (d *Dense[K, V]) Decode(code V) (K, bool) {
-	if uint64(code) < uint64(len(d.used)) && d.used[code] {
-		return d.keys[code], true
+// Decode returns the key that belongs to val.
+func (d *Dense[K, V]) Decode(val V) (K, bool) {
+	if uint64(val) < uint64(len(d.used)) && d.used[val] {
+		return d.keys[val], true
 	}
 	var zero K
 	return zero, false
 }
 
-// Remove deletes key and frees its code for reuse. It returns the freed
-// code, or false if key is unknown.
-func (d *Dense[K, V]) Remove(key K) (V, bool) {
-	code, found := d.codes[key]
+// RemoveKey removes key and frees its value for reuse. It returns the
+// freed value, or false if key is unknown.
+func (d *Dense[K, V]) RemoveKey(key K) (V, bool) {
+	val, found := d.values[key]
 	if !found {
 		return 0, false
 	}
-	delete(d.codes, key)
-	var zero K
-	d.keys[code] = zero // release the key for garbage collection
-	d.used[code] = false
-	d.free = append(d.free, code)
-	return code, true
+	d.release(key, val)
+	return val, true
 }
 
-// Count returns the number of keys, i.e. the number of codes in use.
-func (d *Dense[K, V]) Count() int { return len(d.codes) }
+// RemoveValue removes val together with its key and frees val for reuse.
+// It returns the removed key, or false if val is not in use.
+//
+// It is equivalent to, but more efficient than:
+//
+//	if key, ok := d.Decode(val); ok {
+//		d.RemoveKey(key)
+//		return key, true
+//	}
+//	var zero K
+//	return zero, false
+func (d *Dense[K, V]) RemoveValue(val V) (K, bool) {
+	if uint64(val) >= uint64(len(d.used)) || !d.used[val] {
+		var zero K
+		return zero, false
+	}
+	key := d.keys[val]
+	d.release(key, val)
+	return key, true
+}
 
-// Limit returns an upper bound for all codes in use: every code in use is
+// release frees val, which must be in use and belong to key.
+func (d *Dense[K, V]) release(key K, val V) {
+	delete(d.values, key)
+	var zero K
+	d.keys[val] = zero // allow the key to be garbage collected
+	d.used[val] = false
+	d.free = append(d.free, val)
+}
+
+// Count returns the number of keys, i.e. the number of values in use.
+func (d *Dense[K, V]) Count() int { return len(d.values) }
+
+// Limit returns an upper bound for all values in use: every value in use is
 // less than Limit(). It never decreases.
 func (d *Dense[K, V]) Limit() int { return len(d.keys) }
