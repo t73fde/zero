@@ -10,6 +10,7 @@ This is a collection of utility functions for building applications in
   values.
 * [graph](/dir?ci=tip&name=graph): A simple directed graph.
 * [iter](/dir?ci=tip&name=iter): Additional functions for combining iterators.
+* [maps](/dir?ci=tip&name=maps): Additional useful functions for maps.
 * [oso](/dir?ci=tip&name=oso): Safe, atomic file writing.
 * [roster](/dir?ci=tip&name=roster): A set implementations for non-negative
   integers, based on sorted arrays.

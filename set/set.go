@@ -50,6 +50,8 @@ import (
 	"maps"
 	"strconv"
 	"strings"
+
+	zeromaps "t73f.de/r/zero/maps"
 )
 
 // Set is a set of comparable values, implemented as a hash map, without
@@ -365,14 +367,7 @@ func (s Set[V]) Clone() Set[V] {
 // a bulk insertion.
 //
 // Grow panics if n is negative or too large to allocate the memory.
-func (s *Set[V]) Grow(n int) {
-	if n < 0 {
-		panic("set: negative Grow argument")
-	}
-	m := make(map[V]struct{}, len(s.m)+n)
-	maps.Copy(m, s.m)
-	s.m = m
-}
+func (s *Set[V]) Grow(n int) { s.m = zeromaps.Grow(s.m, n) }
 
 // Shrink releases unused storage. A Go map never releases memory when values
 // are deleted, so the values are copied to a new map of the needed size and
@@ -381,12 +376,4 @@ func (s *Set[V]) Grow(n int) {
 // Shrink does not change the values of the set. Because it reallocates, it
 // is relatively expensive. Use it for long-living sets that were built from
 // larger intermediate results or that lost many values.
-func (s *Set[V]) Shrink() {
-	if len(s.m) == 0 {
-		s.m = nil
-		return
-	}
-	m := make(map[V]struct{}, len(s.m))
-	maps.Copy(m, s.m)
-	s.m = m
-}
+func (s *Set[V]) Shrink() { s.m = zeromaps.Shrink(s.m) }
