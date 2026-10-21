@@ -32,6 +32,12 @@
 // ready to use. A Dense must not be copied after first use.
 package dense
 
+import (
+	"slices"
+
+	zeromaps "t73f.de/r/zero/maps"
+)
+
 // Value is the set of types that are usable as values of a Dense.
 type Value interface {
 	~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64
@@ -137,3 +143,36 @@ func (d *Dense[K, V]) Count() int { return len(d.values) }
 // Limit returns an upper bound for all values in use: every value in use is
 // less than Limit(). It never decreases.
 func (d *Dense[K, V]) Limit() int { return len(d.keys) }
+
+// Grow ensures that n further values can be inserted into d without further
+// allocation.
+func (d *Dense[K, V]) Grow(n int) {
+	d.values = zeromaps.Grow(d.values, n)
+	d.keys = slices.Grow(d.keys, n)
+	d.used = slices.Grow(d.used, n)
+
+	// do not touch d.free since it is only used for remove operations.
+}
+
+// Shrink releases unused storage.
+func (d *Dense[K, V]) Shrink() {
+	d.values = zeromaps.Shrink(d.values)
+
+	if len(d.keys) == 0 {
+		d.keys = nil
+	} else if cap(d.keys) > len(d.keys) {
+		d.keys = slices.Clone(d.keys)
+	}
+
+	if len(d.used) == 0 {
+		d.used = nil
+	} else if cap(d.used) > len(d.used) {
+		d.used = slices.Clone(d.used)
+	}
+
+	if len(d.free) == 0 {
+		d.free = nil
+	} else if cap(d.free) > len(d.free) {
+		d.free = slices.Clone(d.free)
+	}
+}
