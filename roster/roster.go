@@ -481,3 +481,15 @@ func (r *Roster[V]) Grow(n int) {
 // is relatively expensive. Use it for long-living sets that were built from
 // larger intermediate results.
 func (r *Roster[V]) Shrink() { r.array = zeroslices.Shrink(r.array) }
+
+// ShrinkFunc releases unused storage, but keeps some spare capacity.
+//
+// The function spare is called with r.Count() and returns the number of unused
+// elements that are allowed to remain. A negative result is treated as zero.
+// If spare is nil, no spare capacity is kept, as if spare always returned
+// zero.
+//
+//	r.ShrinkFunc(s, func(n int) int { return n / 8 })
+func (r *Roster[V]) ShrinkFunc(spare func(int) int) {
+	r.array = zeroslices.ShrinkFunc(r.array, spare)
+}
