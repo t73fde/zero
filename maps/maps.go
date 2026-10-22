@@ -11,20 +11,20 @@
 // SPDX-FileCopyrightText: 2026-present Detlef Stern
 // -----------------------------------------------------------------------------
 
-// Package maps defines various functions useful with maps of any type, which
-// are missing in std package maps.
+// Package maps provides functions for maps of any type that are missing in
+// the standard library package maps.
 package maps
 
 import "maps"
 
-// Grow ensures that n further values can be inserted into m without further
-// allocation. It does not insert n.
+// Grow returns a copy of m that is sized for n further entries. The result
+// does not share storage with m, and m is not modified.
 //
 // A Go map does not report its capacity. Therefore Grow always allocates a
-// new map of size len(s)+n and copies all values; call it at most once before
-// a bulk insertion.
+// new map and copies all entries; call it at most once before a bulk
+// insertion.
 //
-// Grow panics if n is negative or too large to allocate the memory.
+// Grow panics if n is negative.
 func Grow[M ~map[K]V, K comparable, V any](m M, n int) M {
 	if n < 0 {
 		panic("maps: negative Grow argument")
@@ -34,15 +34,15 @@ func Grow[M ~map[K]V, K comparable, V any](m M, n int) M {
 	return result
 }
 
-// Shrink releases unused storage. A Go map never releases memory when values
-// are deleted, so the values are copied to a new map of the needed size and
-// the old map can be garbage collected.
+// Shrink returns a copy of m that uses no more storage than needed for its
+// entries. A Go map never releases memory when entries are deleted, so the
+// old map can only be garbage collected after its entries were copied.
 //
-// Shrink does not change the values of the set. Because it reallocates, it
-// is relatively expensive. Use it for long-living sets that were built from
-// larger intermediate results or that lost many values.
+// Because it reallocates, Shrink is relatively expensive. Use it for
+// long-living maps that were built from larger intermediate results or that
+// lost many entries.
 func Shrink[M ~map[K]V, K comparable, V any](m M) M {
-	if len(m) == 0 {
+	if m == nil {
 		return nil
 	}
 	result := make(M, len(m))

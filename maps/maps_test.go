@@ -20,18 +20,27 @@ import (
 	zeromaps "t73f.de/r/zero/maps"
 )
 
-func TestGrowShrink(t *testing.T) {
-	m := map[int]string{}
-	if got := zeromaps.Shrink(m); got != nil {
-		t.Errorf("shrink of empty map must result in nil, but got: %v", got)
+type registry map[string]int
+
+var (
+	_ registry = zeromaps.Grow(registry{}, 1)
+	_ registry = zeromaps.Shrink(registry{})
+)
+
+func TestGrow(t *testing.T) {
+	var nilMap map[int]string
+	if got := zeromaps.Grow(nilMap, 8); got == nil {
+		t.Error("got nil map after growing a nil map")
 	}
-	m = nil
-	if got := zeromaps.Grow(m, 8); got == nil {
-		t.Error("got nil map after growing an empty map")
+
+	m := map[int]string{0: "zero", 1: "one"}
+	got := zeromaps.Grow(m, 8)
+	if !maps.Equal(m, got) {
+		t.Errorf("grown map %v differs from original %v", got, m)
 	}
-	m = map[int]string{0: "zero", 1: "one", 2: "two"}
-	if got := zeromaps.Shrink(m); !maps.Equal(m, got) {
-		t.Errorf("shrinked map %v differs in result %v", m, got)
+	got[2] = "two"
+	if _, found := m[2]; found {
+		t.Error("result of Grow shares storage with its argument")
 	}
 }
 
@@ -42,4 +51,26 @@ func TestGrowNegative(t *testing.T) {
 		}
 	}()
 	zeromaps.Grow(map[int]int{}, -1)
+}
+
+func TestShrink(t *testing.T) {
+	var nilMap map[int]string
+	if got := zeromaps.Shrink(nilMap); got != nil {
+		t.Errorf("shrunk nil map must stay nil, but got: %v", got)
+	}
+
+	empty := map[int]string{}
+	if got := zeromaps.Shrink(empty); got == nil || len(got) != 0 {
+		t.Errorf("shrunk empty map must be empty and non-nil, but got: %v", got)
+	}
+
+	m := map[int]string{0: "zero", 1: "one", 2: "two"}
+	got := zeromaps.Shrink(m)
+	if !maps.Equal(m, got) {
+		t.Errorf("shrunk map %v differs from original %v", got, m)
+	}
+	got[3] = "three"
+	if _, found := m[3]; found {
+		t.Error("result of Shrink shares storage with its argument")
+	}
 }
