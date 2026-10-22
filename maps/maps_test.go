@@ -74,3 +74,33 @@ func TestShrink(t *testing.T) {
 		t.Error("result of Shrink shares storage with its argument")
 	}
 }
+
+func TestShrinkFunc(t *testing.T) {
+	var nilMap map[int]string
+	called := false
+	got := zeromaps.ShrinkFunc(nilMap, func(int) int { called = true; return 1 })
+	if got != nil || called {
+		t.Errorf("nil map: got %v, spare called: %v", got, called)
+	}
+
+	m := map[int]string{0: "zero", 1: "one", 2: "two"}
+	var gotLen int
+	got2 := zeromaps.ShrinkFunc(m, func(n int) int { gotLen = n; return 4 })
+	if gotLen != len(m) {
+		t.Errorf("spare called with %d, want %d", gotLen, len(m))
+	}
+	if !maps.Equal(m, got2) {
+		t.Errorf("result %v differs from original %v", got2, m)
+	}
+	got2[3] = "three"
+	if _, found := m[3]; found {
+		t.Error("result of ShrinkFunc shares storage with its argument")
+	}
+
+	if got3 := zeromaps.ShrinkFunc(m, func(int) int { return -5 }); !maps.Equal(m, got3) {
+		t.Errorf("negative spare: result %v differs from original %v", got3, m)
+	}
+	if got4 := zeromaps.ShrinkFunc(m, nil); !maps.Equal(m, got4) {
+		t.Errorf("nil spare: result %v differs from original %v", got4, m)
+	}
+}

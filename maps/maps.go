@@ -34,18 +34,44 @@ func Grow[M ~map[K]V, K comparable, V any](m M, n int) M {
 	return result
 }
 
-// Shrink returns a copy of m that uses no more storage than needed for its
-// entries. A Go map never releases memory when entries are deleted, so the
-// old map can only be garbage collected after its entries were copied.
+// Shrink releases unused storage. A Go map never releases memory when entries
+// are deleted, so the entries are copied to a new map of exactly the needed
+// size and the old map can be garbage collected, provided no other reference
+// to it exists.
 //
-// Because it reallocates, Shrink is relatively expensive. Use it for
+// Shrink is ShrinkFunc with no spare capacity. See ShrinkFunc for details.
+func Shrink[M ~map[K]V, K comparable, V any](m M) M {
+	return ShrinkFunc(m, nil)
+}
+
+// ShrinkFunc releases unused storage, but keeps some spare capacity.
+//
+// The function spare is called with len(m) and returns the number of further
+// entries the new map is sized for. A negative result is treated as zero.
+// If spare is nil, no spare capacity is kept, as if spare always returned
+// zero.
+//
+// A Go map does not report its capacity. Therefore ShrinkFunc cannot detect
+// whether m is oversized and always returns a new map, which shares no
+// storage with m. Because of that it is relatively expensive; use it for
 // long-living maps that were built from larger intermediate results or that
 // lost many entries.
-func Shrink[M ~map[K]V, K comparable, V any](m M) M {
+//
+// If m is nil, nil is returned and spare is not called.
+//
+// Example: keep one eighth of the length as spare capacity.
+//
+//	m = ShrinkFunc(m, func(n int) int { return n / 8 })
+func ShrinkFunc[M ~map[K]V, K comparable, V any](m M, spare func(length int) int) M {
 	if m == nil {
 		return nil
 	}
-	result := make(M, len(m))
+	n := len(m)
+	extra := 0
+	if spare != nil {
+		extra = max(spare(n), 0)
+	}
+	result := make(M, n+extra)
 	maps.Copy(result, m)
 	return result
 }
