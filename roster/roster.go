@@ -59,6 +59,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	zeroslices "t73f.de/r/zero/slices"
 )
 
 // Roster is a set of ordered values, implemented as a sorted array, without
@@ -478,10 +480,4 @@ func (r *Roster[V]) Grow(n int) {
 // Shrink does not change the values of the set. Because it reallocates, it
 // is relatively expensive. Use it for long-living sets that were built from
 // larger intermediate results.
-func (r *Roster[V]) Shrink() {
-	if len(r.array) == 0 {
-		r.array = nil
-	} else if cap(r.array) > len(r.array) {
-		r.array = slices.Clone(r.array)
-	}
-}
+func (r *Roster[V]) Shrink() { r.array = zeroslices.Shrink(r.array) }

@@ -36,6 +36,7 @@ import (
 	"slices"
 
 	zeromaps "t73f.de/r/zero/maps"
+	zeroslices "t73f.de/r/zero/slices"
 )
 
 // Value is the set of types that are usable as values of a Dense.
@@ -157,22 +158,7 @@ func (d *Dense[K, V]) Grow(n int) {
 // Shrink releases unused storage.
 func (d *Dense[K, V]) Shrink() {
 	d.values = zeromaps.Shrink(d.values)
-
-	if len(d.keys) == 0 {
-		d.keys = nil
-	} else if cap(d.keys) > len(d.keys) {
-		d.keys = slices.Clone(d.keys)
-	}
-
-	if len(d.used) == 0 {
-		d.used = nil
-	} else if cap(d.used) > len(d.used) {
-		d.used = slices.Clone(d.used)
-	}
-
-	if len(d.free) == 0 {
-		d.free = nil
-	} else if cap(d.free) > len(d.free) {
-		d.free = slices.Clone(d.free)
-	}
+	d.keys = zeroslices.Shrink(d.keys)
+	d.used = zeroslices.Shrink(d.used)
+	d.free = zeroslices.Shrink(d.free)
 }

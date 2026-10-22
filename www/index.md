@@ -17,8 +17,9 @@ This is a collection of utility functions for building applications in
 * [runes](/dir?ci=tip&name=runes): Unicode code point classification functions.
 * [semver](/dir?ci=tip&name=semver): Semantic version data.
 * [set](/dir?ci=tip&name=set): A simple set type.
-* [strings](/dir?ci=tip&name=strings): String functions.
 * [snow](/dir?ci=tip&name=snow): A key generator.
+* [slices](/dir?ci=tip&name=slices): Additional useful functions for slices.
+* [strings](/dir?ci=tip&name=strings): String functions.
 * [umbra](/dir?ci=tip&name=umbra): A compact string representation.
 * [vocab](/dir?ci=tip&name=vocab): A word store.
 
