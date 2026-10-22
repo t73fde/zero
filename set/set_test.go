@@ -537,6 +537,52 @@ func TestGrowNegative(t *testing.T) {
 	s.Grow(-1)
 }
 
+func TestShrinkFunc(t *testing.T) {
+	spares := []struct {
+		name  string
+		spare func(int) int
+	}{
+		{"zero", func(int) int { return 0 }},
+		{"half", func(n int) int { return n / 2 }},
+		{"large", func(int) int { return 1 << 20 }},
+	}
+	for _, sp := range spares {
+		t.Run(sp.name, func(t *testing.T) {
+			spare := func(n int) int {
+				if n < 0 {
+					t.Errorf("spare called with negative argument %d", n)
+				}
+				return sp.spare(n)
+			}
+
+			var zero set.Set[int]
+			zero.ShrinkFunc(spare)
+			checkSet(t, "zero value", zero)
+			zero.Insert(1)
+			checkSet(t, "zero value after Insert", zero, 1)
+
+			s := set.New(ints(100)...)
+			for i := 10; i < 100; i++ {
+				s.Delete(i)
+			}
+			s.ShrinkFunc(spare)
+			checkSet(t, "after deletions", s, ints(10)...)
+
+			s.ShrinkFunc(spare) // repeated call, nothing left to release
+			checkSet(t, "repeated", s, ints(10)...)
+
+			s.Insert(500)
+			checkSet(t, "after Insert", s, append(ints(10), 500)...)
+
+			s.DeleteAll()
+			s.ShrinkFunc(spare)
+			checkSet(t, "empty", s)
+			s.Insert(7)
+			checkSet(t, "empty after Insert", s, 7)
+		})
+	}
+}
+
 // ----- Floating-point semantics (documented in package comment)
 
 func TestFloat(t *testing.T) {

@@ -371,9 +371,20 @@ func (s *Set[V]) Grow(n int) { s.m = zeromaps.Grow(s.m, n) }
 
 // Shrink releases unused storage. A Go map never releases memory when values
 // are deleted, so the values are copied to a new map of the needed size and
-// the old map can be garbage collected.
+// the old map can be garbage collected. An empty set stays an empty set.
 //
 // Shrink does not change the values of the set. Because it reallocates, it
 // is relatively expensive. Use it for long-living sets that were built from
 // larger intermediate results or that lost many values.
 func (s *Set[V]) Shrink() { s.m = zeromaps.Shrink(s.m) }
+
+// ShrinkFunc releases unused storage like Shrink, but only if the unused
+// storage exceeds the amount that spare allows to retain. The function spare
+// is called with the number of values in the set and returns the amount of
+// unused storage that may be kept. Use it to avoid repeated reallocation of
+// sets that change their size only slightly.
+//
+// ShrinkFunc does not change the values of the set.
+func (s *Set[V]) ShrinkFunc(spare func(int) int) {
+	s.m = zeromaps.ShrinkFunc(s.m, spare)
+}
