@@ -460,3 +460,115 @@ func TestRemoveValueFreesRange(t *testing.T) {
 		t.Errorf("Count() after panic = %d, want 256", got)
 	}
 }
+
+// populate returns a Dense with the keys 0..n-1, from which every third key
+// was removed again, so that the free list is not empty.
+func populate(n int) *dense.Dense[int, uint16] {
+	d := new(dense.Dense[int, uint16])
+	for i := range n {
+		d.Encode(i)
+	}
+	for i := 0; i < n; i += 3 {
+		d.RemoveKey(i)
+	}
+	return d
+}
+
+func assertSame(t *testing.T, got, want *dense.Dense[int, uint16], maxKey int) {
+	t.Helper()
+	if g, w := got.Count(), want.Count(); g != w {
+		t.Fatalf("Count() = %d, want %d", g, w)
+	}
+	if g, w := got.Limit(), want.Limit(); g != w {
+		t.Fatalf("Limit() = %d, want %d", g, w)
+	}
+	for key := range maxKey {
+		gv, gf := got.Find(key)
+		wv, wf := want.Find(key)
+		if gv != wv || gf != wf {
+			t.Fatalf("Find(%d) = (%d, %v), want (%d, %v)", key, gv, gf, wv, wf)
+		}
+	}
+	for val := range want.Limit() + 1 { // including one value beyond the limit
+		gk, gf := got.Decode(uint16(val))
+		wk, wf := want.Decode(uint16(val))
+		if gk != wk || gf != wf {
+			t.Fatalf("Decode(%d) = (%d, %v), want (%d, %v)", val, gk, gf, wk, wf)
+		}
+	}
+}
+
+func TestCapacityOperationsKeepState(t *testing.T) {
+	const n = 100
+	tests := []struct {
+		name string
+		op   func(*dense.Dense[int, uint16])
+	}{
+		{"Grow", func(d *dense.Dense[int, uint16]) { d.Grow(500) }},
+		{"Grow 0", func(d *dense.Dense[int, uint16]) { d.Grow(0) }},
+		{"Shrink", func(d *dense.Dense[int, uint16]) { d.Shrink() }},
+		{"ShrinkFunc nil", func(d *dense.Dense[int, uint16]) { d.ShrinkFunc(nil) }},
+		{"ShrinkFunc negative", func(d *dense.Dense[int, uint16]) {
+			d.ShrinkFunc(func(int) int { return -1 })
+		}},
+		{"ShrinkFunc n/8", func(d *dense.Dense[int, uint16]) {
+			d.ShrinkFunc(func(n int) int { return n / 8 })
+		}},
+		{"ShrinkFunc constant", func(d *dense.Dense[int, uint16]) {
+			d.ShrinkFunc(func(int) int { return 10 })
+		}},
+		{"Grow, Shrink", func(d *dense.Dense[int, uint16]) {
+			d.Grow(500)
+			d.Shrink()
+		}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, want := populate(n), populate(n)
+			tc.op(got)
+			assertSame(t, got, want, n+50)
+
+			// Both continue identically: first the freed values (most
+			// recently freed first), then fresh ones.
+			for i := n; i < n+50; i++ {
+				if g, w := got.Encode(i), want.Encode(i); g != w {
+					t.Fatalf("Encode(%d) = %d, want %d", i, g, w)
+				}
+			}
+			assertSame(t, got, want, n+50)
+		})
+	}
+}
+
+func TestCapacityOperationsZeroValue(t *testing.T) {
+	var d dense.Dense[string, uint]
+	d.Grow(0)
+	d.Shrink()
+	d.ShrinkFunc(nil)
+	d.ShrinkFunc(func(n int) int { return n })
+	if d.Count() != 0 || d.Limit() != 0 {
+		t.Errorf("Count() = %d, Limit() = %d, want 0, 0", d.Count(), d.Limit())
+	}
+	if got := d.Encode("a"); got != 0 {
+		t.Errorf("Encode(a) = %d, want 0", got)
+	}
+
+	var e dense.Dense[string, uint]
+	e.Grow(10)
+	if e.Count() != 0 || e.Limit() != 0 {
+		t.Errorf("after Grow: Count() = %d, Limit() = %d, want 0, 0", e.Count(), e.Limit())
+	}
+	if got := e.Encode("a"); got != 0 {
+		t.Errorf("Encode(a) after Grow = %d, want 0", got)
+	}
+}
+
+func TestGrowNegative(t *testing.T) {
+	var d dense.Dense[int, uint]
+	defer func() {
+		if recover() == nil {
+			t.Error("Grow(-1) did not panic")
+		}
+	}()
+	d.Grow(-1)
+}
