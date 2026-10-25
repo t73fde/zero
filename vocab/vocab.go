@@ -318,6 +318,11 @@ func (v *Vocabulary) AppendBytes(dst []byte, id WordID) []byte {
 	return append(dst, v.ids[id].view(v.store)...)
 }
 
+// GetString returns the word with the given WordID as a string.
+func (v *Vocabulary) GetString(id WordID) string {
+	return string(v.ids[id].view(v.store))
+}
+
 // WriteTo writes the word with the given ID to w and returns the number of
 // bytes written.
 func (v *Vocabulary) WriteTo(w io.Writer, id WordID) (int64, error) {
