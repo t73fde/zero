@@ -198,13 +198,22 @@ func (v *Vocabulary) AddString(s string) WordID {
 	return v.add(b)
 }
 
-// Lookup returns the ID of the word b, or 0 if b was not added. Words longer
-// than MaxWordLen cannot be present; Lookup does not panic for them.
-func (v *Vocabulary) Lookup(b []byte) WordID {
+// LookupBytes returns the ID of the word b, or InvalidWordID if b was not
+// added. Words longer than MaxWordLen cannot be present; LookupBytes does
+// not panic for them.
+func (v *Vocabulary) LookupBytes(b []byte) WordID {
 	if len(b) > MaxWordLen {
 		return InvalidWordID
 	}
 	return v.probe(b, v.hash(b))
+}
+
+// LookupString returns the ID of the word s, or InvalidWordID if s was not
+// added. Words longer than MaxWordLen cannot be present; LookupString does
+// not panic for them.
+func (v *Vocabulary) LookupString(s string) WordID {
+	b := unsafe.Slice(unsafe.StringData(s), len(s))
+	return v.LookupBytes(b)
 }
 
 // add registers b in the vocabulary and returns its WordID. If b is

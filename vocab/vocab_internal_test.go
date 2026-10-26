@@ -95,8 +95,8 @@ func checkInvariants(t *testing.T, v *Vocabulary) {
 		if got := v.hash(w); got != h {
 			t.Fatalf("position %d: stored hash differs from hash of word %q", i, w)
 		}
-		if got := v.Lookup(w); got != id {
-			t.Fatalf("Lookup(%q) = %d, want %d", w, got, id)
+		if got := v.LookupBytes(w); got != id {
+			t.Fatalf("LookupBytes(%q) = %d, want %d", w, got, id)
 		}
 	}
 	if occupied != v.Count() {
@@ -127,8 +127,8 @@ func verify(t *testing.T, v *Vocabulary, m *model) {
 	}
 	for i, w := range m.words {
 		id := WordID(i + 1)
-		if got := v.Lookup([]byte(w)); got != id {
-			t.Fatalf("Lookup(%q) = %d, want %d", w, got, id)
+		if got := v.LookupBytes([]byte(w)); got != id {
+			t.Fatalf("LookupBytes(%q) = %d, want %d", w, got, id)
 		}
 		if got := string(v.AppendBytes(nil, id)); got != w {
 			t.Fatalf("AppendBytes(%d) = %q, want %q", id, got, w)
@@ -276,8 +276,8 @@ func TestAddTooLong(t *testing.T) {
 	if v.Count() != 1 || v.StoreLen() != 0 {
 		t.Errorf("state changed by panic: Len = %d, StoreLen = %d", v.Count(), v.StoreLen())
 	}
-	if id := v.Lookup(tooLong); id != 0 {
-		t.Errorf("Lookup(too long) = %d, want 0", id)
+	if id := v.LookupBytes(tooLong); id != 0 {
+		t.Errorf("LookupBytes(too long) = %d, want 0", id)
 	}
 }
 
@@ -362,7 +362,7 @@ func TestWriteTo(t *testing.T) {
 	v := New(0)
 	word := []byte("HelloWorld")
 	v.AddBytes(word)
-	id := v.Lookup(word)
+	id := v.LookupBytes(word)
 	if id == InvalidWordID {
 		panic("not found")
 	}
@@ -525,8 +525,8 @@ func TestRandomAgainstModel(t *testing.T) {
 			// Unknown words are not found.
 			for range 100 {
 				w := randomWord(rng, 40)
-				if _, known := m.ids[w]; !known && v.Lookup([]byte(w)) != InvalidWordID {
-					t.Fatalf("Lookup(%q) found an unknown word", w)
+				if _, known := m.ids[w]; !known && v.LookupBytes([]byte(w)) != InvalidWordID {
+					t.Fatalf("LookupBytes(%q) found an unknown word", w)
 				}
 			}
 			// Search terms: random parts of random known words.
@@ -591,7 +591,7 @@ func TestWordsFull(t *testing.T) {
 func TestWordsZero(t *testing.T) {
 	v := New(0, WithMaxWords(0))
 	assertPanics(t, "Add", func() { v.AddBytes([]byte("a")) })
-	if v.Lookup([]byte("a")) != 0 || v.Count() != 0 {
+	if v.LookupBytes([]byte("a")) != 0 || v.Count() != 0 {
 		t.Error("empty Vocabulary changed")
 	}
 }

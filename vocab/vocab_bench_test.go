@@ -202,9 +202,9 @@ func BenchmarkAddKnown(b *testing.B) {
 	}
 }
 
-// BenchmarkLookup measures Lookup for present words (hit) and for absent words
-// (miss). Keys are accessed in random order.
-func BenchmarkLookup(b *testing.B) {
+// BenchmarkLookupBytes measures LookupBytes for present words (hit) and for
+// absent words (miss). Keys are accessed in random order.
+func BenchmarkLookupBytes(b *testing.B) {
 	for _, n := range benchSizes {
 		words := corpus(b, n)
 		v := build(words)
@@ -220,7 +220,7 @@ func BenchmarkLookup(b *testing.B) {
 				b.ReportAllocs()
 				j := 0
 				for b.Loop() {
-					sink += int(v.Lookup(tc.keys[j]))
+					sink += int(v.LookupBytes(tc.keys[j]))
 					if j++; j == n {
 						j = 0
 					}
@@ -230,8 +230,8 @@ func BenchmarkLookup(b *testing.B) {
 	}
 }
 
-// BenchmarkLookupMap is the baseline for BenchmarkLookup: the same lookups in
-// a map[string]WordID.
+// BenchmarkLookupMap is the baseline for BenchmarkLookupBytes: the same
+// lookups in a map[string]WordID.
 func BenchmarkLookupMap(b *testing.B) {
 	for _, n := range benchSizes {
 		words := corpus(b, n)
@@ -473,7 +473,7 @@ func BenchmarkLoadFactor(b *testing.B) {
 			b.Run(name+"/"+tc.kind, func(b *testing.B) {
 				j := 0
 				for b.Loop() {
-					sink += int(v.Lookup(tc.keys[j]))
+					sink += int(v.LookupBytes(tc.keys[j]))
 					if j++; j == count {
 						j = 0
 					}

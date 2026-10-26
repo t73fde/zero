@@ -22,6 +22,70 @@ import (
 	"t73f.de/r/zero/vocab"
 )
 
+func TestLookupString(t *testing.T) {
+	v := vocab.New(0)
+
+	helloID := v.AddString("hello")
+	worldID := v.AddBytes([]byte("world"))
+	umlautID := v.AddString("Übung")
+	maxWord := strings.Repeat("a", vocab.MaxWordLen)
+	maxID := v.AddString(maxWord)
+
+	tests := []struct {
+		name string
+		word string
+		want vocab.WordID
+	}{
+		{"added via AddString", "hello", helloID},
+		{"added via AddBytes", "world", worldID},
+		{"multibyte", "Übung", umlautID},
+		{"max length", maxWord, maxID},
+		{"absent", "absent", vocab.InvalidWordID},
+		{"prefix of present word", "hell", vocab.InvalidWordID},
+		{"extension of present word", "helloo", vocab.InvalidWordID},
+		{"different case", "Hello", vocab.InvalidWordID},
+		{"empty", "", vocab.InvalidWordID},
+		{"too long", strings.Repeat("a", vocab.MaxWordLen+1), vocab.InvalidWordID},
+		{"much too long", strings.Repeat("a", 10*vocab.MaxWordLen), vocab.InvalidWordID},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := v.LookupString(tc.word); got != tc.want {
+				t.Errorf("LookupString(%q) = %v, want %v", tc.word, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestLookupStringMatchesLookupBytes(t *testing.T) {
+	v := vocab.New(0)
+	words := []string{"alpha", "beta", "Straße", "Übung", "x"}
+	for _, w := range words {
+		v.AddString(w)
+	}
+	for _, w := range append(words, "gamma", "alph", "") {
+		if s, b := v.LookupString(w), v.LookupBytes([]byte(w)); s != b {
+			t.Errorf("LookupString(%q) = %v, LookupBytes = %v", w, s, b)
+		}
+	}
+}
+
+func TestLookupStringEmptyVocabulary(t *testing.T) {
+	v := vocab.New(0)
+	if got := v.LookupString("anything"); got != vocab.InvalidWordID {
+		t.Errorf("LookupString on empty vocabulary = %v, want InvalidWordID", got)
+	}
+}
+
+func BenchmarkLookupString(b *testing.B) {
+	v := vocab.New(0)
+	v.AddString("hello")
+	b.ReportAllocs()
+	for b.Loop() {
+		v.LookupString("hello")
+	}
+}
+
 func TestGetString(t *testing.T) {
 	v := vocab.New(0)
 
