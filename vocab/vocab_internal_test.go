@@ -171,14 +171,24 @@ func checkSearches(t *testing.T, v *Vocabulary, m *model, p []byte) {
 			suffix = append(suffix, id)
 		}
 	}
-	if got := slices.Collect(v.WordsContaining(p)); !slices.Equal(got, contains) {
-		t.Fatalf("WordsContaining(%q) = %v, want %v", p, got, contains)
+	if got := slices.Collect(v.WordsContainingBytes(p)); !slices.Equal(got, contains) {
+		t.Fatalf("WordsContainingBytes(%q) = %v, want %v", p, got, contains)
 	}
-	if got := slices.Collect(v.WordsWithPrefix(p)); !slices.Equal(got, prefix) {
-		t.Fatalf("WordsWithPrefix(%q) = %v, want %v", p, got, prefix)
+	if got := slices.Collect(v.WordsWithPrefixBytes(p)); !slices.Equal(got, prefix) {
+		t.Fatalf("WordsWithPrefixBytes(%q) = %v, want %v", p, got, prefix)
 	}
-	if got := slices.Collect(v.WordsWithSuffix(p)); !slices.Equal(got, suffix) {
-		t.Fatalf("WordsWithSuffix(%q) = %v, want %v", p, got, suffix)
+	if got := slices.Collect(v.WordsWithSuffixBytes(p)); !slices.Equal(got, suffix) {
+		t.Fatalf("WordsWithSuffixBytes(%q) = %v, want %v", p, got, suffix)
+	}
+	s := string(p)
+	if got := slices.Collect(v.WordsContainingString(s)); !slices.Equal(got, contains) {
+		t.Fatalf("WordsContainingString(%q) = %v, want %v", p, got, contains)
+	}
+	if got := slices.Collect(v.WordsWithPrefixString(s)); !slices.Equal(got, prefix) {
+		t.Fatalf("WordsWithPrefixString(%q) = %v, want %v", p, got, prefix)
+	}
+	if got := slices.Collect(v.WordsWithSuffixString(s)); !slices.Equal(got, suffix) {
+		t.Fatalf("WordsWithSuffixString(%q) = %v, want %v", p, got, suffix)
 	}
 }
 
@@ -446,9 +456,12 @@ func TestIteratorEarlyStop(t *testing.T) {
 		v.AddBytes(fmt.Appendf(nil, "abc%dabc", i))
 	}
 	seqs := map[string]iter.Seq[WordID]{
-		"WordsContaining": v.WordsContaining([]byte("bc")),
-		"WordsWithPrefix": v.WordsWithPrefix([]byte("abc")),
-		"WordsWithSuffix": v.WordsWithSuffix([]byte("abc")),
+		"WordsContainingBytes":  v.WordsContainingBytes([]byte("bc")),
+		"WordsWithPrefixBytes":  v.WordsWithPrefixBytes([]byte("abc")),
+		"WordsWithSuffixBytes":  v.WordsWithSuffixBytes([]byte("abc")),
+		"WordsContainingString": v.WordsContainingString("bc"),
+		"WordsWithPrefixString": v.WordsWithPrefixString("abc"),
+		"WordsWithSuffixString": v.WordsWithSuffixString("abc"),
 	}
 	for name, seq := range seqs {
 		calls := 0
@@ -467,7 +480,7 @@ func TestIteratorSnapshot(t *testing.T) {
 	v.AddBytes([]byte("ab1"))
 	v.AddBytes([]byte("ab2"))
 	var got []WordID
-	for id := range v.WordsWithPrefix([]byte("ab")) {
+	for id := range v.WordsWithPrefixBytes([]byte("ab")) {
 		got = append(got, id)
 		// Adding words during the iteration must neither crash nor be
 		// visited, even if the internal slices are reallocated.

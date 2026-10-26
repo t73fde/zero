@@ -16,41 +16,14 @@ package vocab
 import (
 	"bytes"
 	"iter"
+	"unsafe"
 )
 
-// The searches below are deliberately written out separately instead of
-// sharing a generic filter loop. Each one can be optimized on its own (for
-// example by a different use of the prefix cache) without a function call per
-// word.
-//
-// All iterators work on a snapshot taken when the iteration starts: words
-// added meanwhile are not visited.
+// All iterators below work on a snapshot taken when the iteration starts:
+// words added meanwhile are not visited.
 
-// WordsContaining returns the IDs of all words that contain needle.
-func (v *Vocabulary) WordsContaining(needle []byte) iter.Seq[WordID] {
-	return func(yield func(WordID) bool) {
-		ids, store := v.ids, v.store
-		for i := 1; i < len(ids); i++ {
-			s := &ids[i]
-			if int(s.len) < len(needle) {
-				continue
-			}
-			var found bool
-			if s.isInline() {
-				found = bytes.Contains(s.data[:s.len], needle)
-			} else {
-				found = (len(needle) <= cacheLen && bytes.Contains(s.cache(), needle)) ||
-					bytes.Contains(s.full(store), needle)
-			}
-			if found && !yield(WordID(i)) {
-				return
-			}
-		}
-	}
-}
-
-// WordsWithPrefix returns the IDs of all words that start with prefix.
-func (v *Vocabulary) WordsWithPrefix(prefix []byte) iter.Seq[WordID] {
+// WordsWithPrefixBytes returns the IDs of all words that start with prefix.
+func (v *Vocabulary) WordsWithPrefixBytes(prefix []byte) iter.Seq[WordID] {
 	return func(yield func(WordID) bool) {
 		ids, store := v.ids, v.store
 		for i := 1; i < len(ids); i++ {
@@ -75,8 +48,8 @@ func (v *Vocabulary) WordsWithPrefix(prefix []byte) iter.Seq[WordID] {
 	}
 }
 
-// WordsWithSuffix returns the IDs of all words that end with suffix.
-func (v *Vocabulary) WordsWithSuffix(suffix []byte) iter.Seq[WordID] {
+// WordsWithSuffixBytes returns the IDs of all words that end with suffix.
+func (v *Vocabulary) WordsWithSuffixBytes(suffix []byte) iter.Seq[WordID] {
 	return func(yield func(WordID) bool) {
 		ids, store := v.ids, v.store
 		for i := 1; i < len(ids); i++ {
@@ -89,4 +62,45 @@ func (v *Vocabulary) WordsWithSuffix(suffix []byte) iter.Seq[WordID] {
 			}
 		}
 	}
+}
+
+// WordsContainingBytes returns the IDs of all words that contain needle.
+func (v *Vocabulary) WordsContainingBytes(needle []byte) iter.Seq[WordID] {
+	return func(yield func(WordID) bool) {
+		ids, store := v.ids, v.store
+		for i := 1; i < len(ids); i++ {
+			s := &ids[i]
+			if int(s.len) < len(needle) {
+				continue
+			}
+			var found bool
+			if s.isInline() {
+				found = bytes.Contains(s.data[:s.len], needle)
+			} else {
+				found = (len(needle) <= cacheLen && bytes.Contains(s.cache(), needle)) ||
+					bytes.Contains(s.full(store), needle)
+			}
+			if found && !yield(WordID(i)) {
+				return
+			}
+		}
+	}
+}
+
+// WordsWithPrefixString returns the IDs of all words that start with prefix.
+func (v *Vocabulary) WordsWithPrefixString(prefix string) iter.Seq[WordID] {
+	b := unsafe.Slice(unsafe.StringData(prefix), len(prefix))
+	return v.WordsWithPrefixBytes(b)
+}
+
+// WordsWithSuffixString returns the IDs of all words that end with suffix.
+func (v *Vocabulary) WordsWithSuffixString(suffix string) iter.Seq[WordID] {
+	b := unsafe.Slice(unsafe.StringData(suffix), len(suffix))
+	return v.WordsWithSuffixBytes(b)
+}
+
+// WordsContainingString returns the IDs of all words that contain needle.
+func (v *Vocabulary) WordsContainingString(needle string) iter.Seq[WordID] {
+	b := unsafe.Slice(unsafe.StringData(needle), len(needle))
+	return v.WordsContainingBytes(b)
 }
