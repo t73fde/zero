@@ -14,6 +14,7 @@
 package dense_test
 
 import (
+	"slices"
 	"strconv"
 	"testing"
 
@@ -458,6 +459,152 @@ func TestRemoveValueFreesRange(t *testing.T) {
 	}()
 	if got := d.Count(); got != 256 {
 		t.Errorf("Count() after panic = %d, want 256", got)
+	}
+}
+
+type pair struct {
+	key string
+	val uint
+}
+
+func collectAll(d *dense.Dense[string, uint]) []pair {
+	var result []pair
+	for key, val := range d.All() {
+		result = append(result, pair{key, val})
+	}
+	return result
+}
+
+// newABCD returns a Dense in which the freed value 0 of "a" was reused for
+// "d", so that the order of the values differs from the order of insertion.
+func newABCD() *dense.Dense[string, uint] {
+	d := new(dense.Dense[string, uint])
+	d.Encode("a")
+	d.Encode("b")
+	d.Encode("c")
+	d.RemoveKey("a")
+	d.Encode("d")
+	return d
+}
+
+func TestAll(t *testing.T) {
+	var empty dense.Dense[string, uint]
+	if got := collectAll(&empty); len(got) != 0 {
+		t.Errorf("All() of zero value = %v, want nothing", got)
+	}
+
+	d := newABCD()
+	want := []pair{{"d", 0}, {"b", 1}, {"c", 2}}
+	if got := collectAll(d); !slices.Equal(got, want) {
+		t.Errorf("All() = %v, want %v", got, want)
+	}
+
+	d.RemoveKey("b")
+	want = []pair{{"d", 0}, {"c", 2}}
+	if got := collectAll(d); !slices.Equal(got, want) {
+		t.Errorf("All() after RemoveKey(b) = %v, want %v", got, want)
+	}
+}
+
+func TestAllConsistent(t *testing.T) {
+	d := populate(100)
+	n := 0
+	prev := -1
+	for key, val := range d.All() {
+		n++
+		if int(val) <= prev {
+			t.Fatalf("values not ascending: %d after %d", val, prev)
+		}
+		prev = int(val)
+		if got, found := d.Find(key); !found || got != val {
+			t.Fatalf("Find(%d) = (%d, %v), want (%d, true)", key, got, found, val)
+		}
+		if got, found := d.Decode(val); !found || got != key {
+			t.Fatalf("Decode(%d) = (%d, %v), want (%d, true)", val, got, found, key)
+		}
+	}
+	if n != d.Count() {
+		t.Errorf("All() produced %d pairs, Count() = %d", n, d.Count())
+	}
+}
+
+func TestKeysValues(t *testing.T) {
+	d := newABCD()
+	if got, want := slices.Collect(d.Keys()), []string{"d", "b", "c"}; !slices.Equal(got, want) {
+		t.Errorf("Keys() = %v, want %v", got, want)
+	}
+	if got, want := slices.Collect(d.Values()), []uint{0, 1, 2}; !slices.Equal(got, want) {
+		t.Errorf("Values() = %v, want %v", got, want)
+	}
+
+	var empty dense.Dense[string, uint]
+	if got := slices.Collect(empty.Keys()); len(got) != 0 {
+		t.Errorf("Keys() of zero value = %v, want nothing", got)
+	}
+	if got := slices.Collect(empty.Values()); len(got) != 0 {
+		t.Errorf("Values() of zero value = %v, want nothing", got)
+	}
+}
+
+func TestIteratorsStopEarly(t *testing.T) {
+	var d dense.Dense[int, uint]
+	for i := range 10 {
+		d.Encode(i)
+	}
+	stopAtThree := func(t *testing.T, name string, count func() int) {
+		t.Helper()
+		if got := count(); got != 3 {
+			t.Errorf("%s: %d iterations, want 3", name, got)
+		}
+	}
+	stopAtThree(t, "All", func() int {
+		n := 0
+		for range d.All() {
+			if n++; n == 3 {
+				break
+			}
+		}
+		return n
+	})
+	stopAtThree(t, "Keys", func() int {
+		n := 0
+		for range d.Keys() {
+			if n++; n == 3 {
+				break
+			}
+		}
+		return n
+	})
+	stopAtThree(t, "Values", func() int {
+		n := 0
+		for range d.Values() {
+			if n++; n == 3 {
+				break
+			}
+		}
+		return n
+	})
+}
+
+func TestIteratorRemoveDuringIteration(t *testing.T) {
+	var d dense.Dense[int, uint]
+	for i := range 10 {
+		d.Encode(i)
+	}
+	var seen []int
+	for key := range d.Keys() {
+		seen = append(seen, key)
+		d.RemoveKey(key) // the current key
+		if key == 0 {
+			d.RemoveKey(9) // a key that was not yet reached
+		}
+	}
+	want := []int{0, 1, 2, 3, 4, 5, 6, 7, 8}
+	if !slices.Equal(seen, want) {
+		t.Errorf("seen %v, want %v", seen, want)
+	}
+	if got := d.Count(); got != 0 {
+		t.Errorf("Count() = %d, want 0", got)
 	}
 }
 

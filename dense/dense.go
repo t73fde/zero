@@ -33,6 +33,7 @@
 package dense
 
 import (
+	"iter"
 	"slices"
 
 	zeromaps "t73f.de/r/zero/maps"
@@ -144,6 +145,48 @@ func (d *Dense[K, V]) Count() int { return len(d.values) }
 // Limit returns an upper bound for all values in use: every value in use is
 // less than Limit(). It never decreases.
 func (d *Dense[K, V]) Limit() int { return len(d.keys) }
+
+// All returns an iterator over all key-value pairs of d, in ascending order
+// of the values.
+//
+// Removing keys during the iteration is allowed: a removed key that was not
+// yet reached is not produced. Whether keys added during the iteration are
+// produced is unspecified.
+func (d *Dense[K, V]) All() iter.Seq2[K, V] {
+	return func(yield func(K, V) bool) {
+		// d.keys and d.used are read anew in every step, because yield may
+		// modify d.
+		for i := 0; i < len(d.keys); i++ {
+			if d.used[i] && !yield(d.keys[i], V(i)) {
+				return
+			}
+		}
+	}
+}
+
+// Keys returns an iterator over all keys of d, in ascending order of their
+// values. See All() for modifications during the iteration.
+func (d *Dense[K, V]) Keys() iter.Seq[K] {
+	return func(yield func(K) bool) {
+		for key := range d.All() {
+			if !yield(key) {
+				return
+			}
+		}
+	}
+}
+
+// Values returns an iterator over all values in use, in ascending order.
+// See All() for modifications during the iteration.
+func (d *Dense[K, V]) Values() iter.Seq[V] {
+	return func(yield func(V) bool) {
+		for _, val := range d.All() {
+			if !yield(val) {
+				return
+			}
+		}
+	}
+}
 
 // Grow ensures that n further values can be inserted into d without further
 // allocation.
