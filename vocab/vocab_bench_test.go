@@ -303,7 +303,7 @@ type searchKind struct {
 	name    string
 	lengths []int // query lengths in bytes
 	cut     func(w []byte, n int) []byte
-	seq     func(*Vocabulary, []byte) iter.Seq[WordID]
+	seq     func(Snapshot, []byte) iter.Seq[WordID]
 	match   func(s, q string) bool // baseline on plain Go strings
 }
 
@@ -311,19 +311,19 @@ var searchKinds = []searchKind{
 	{name: "contains",
 		lengths: []int{3, 5},
 		cut:     func(w []byte, n int) []byte { k := (len(w) - n) / 2; return w[k : k+n] },
-		seq:     (*Vocabulary).WordsContainingBytes,
+		seq:     (Snapshot).WordsContainingBytes,
 		match:   strings.Contains,
 	},
 	{name: "prefix",
 		lengths: []int{3, cacheLen + 2}, // within and beyond the cache
 		cut:     func(w []byte, n int) []byte { return w[:n] },
-		seq:     (*Vocabulary).WordsWithPrefixBytes,
+		seq:     (Snapshot).WordsWithPrefixBytes,
 		match:   strings.HasPrefix,
 	},
 	{name: "suffix",
 		lengths: []int{3, 6},
 		cut:     func(w []byte, n int) []byte { return w[len(w)-n:] },
-		seq:     (*Vocabulary).WordsWithSuffixBytes,
+		seq:     (Snapshot).WordsWithSuffixBytes,
 		match:   strings.HasSuffix,
 	},
 }
@@ -366,7 +366,7 @@ func BenchmarkSearch(b *testing.B) {
 				b.Run(name+"/vocab", func(b *testing.B) {
 					hits := 0
 					for i := range b.N {
-						for range k.seq(v, qb[i%len(qb)]) {
+						for range k.seq(v.Snapshot(), qb[i%len(qb)]) {
 							hits++
 						}
 					}
