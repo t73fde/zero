@@ -77,21 +77,38 @@ type Roster[V cmp.Ordered] struct {
 // New returns a Roster containing all given values.
 // Unsorted input and duplicate values are allowed.
 func New[V cmp.Ordered](values ...V) Roster[V] {
-	return fromUnsorted(slices.Clone(values))
+	return FromUnsorted(slices.Clone(values))
 }
 
 // Collect returns a Roster containing all values produced by seq.
 func Collect[V cmp.Ordered](seq iter.Seq[V]) Roster[V] {
-	return fromUnsorted(slices.Collect(seq))
+	return FromUnsorted(slices.Collect(seq))
 }
 
-func fromUnsorted[V cmp.Ordered](slv []V) Roster[V] {
+// FromUnsorted returns a Roster that takes ownership of s. The values of s
+// must not be in strictly ascending order as defined by cmp.Compare. The
+// caller must not use s afterwards.
+func FromUnsorted[V cmp.Ordered](slv []V) Roster[V] {
 	if len(slv) == 0 {
 		return Roster[V]{}
 	}
 	slices.Sort(slv)
 	return Roster[V]{array: slices.CompactFunc(slv, func(x, y V) bool { return cmp.Compare(x, y) == 0 })}
+}
 
+// FromSorted returns a Roster that takes ownership of s. The values of s
+// must be in strictly ascending order as defined by cmp. or cmp.Less.
+// Otherwise FromSorted panics. The caller must not use s afterwards.
+func FromSorted[V cmp.Ordered](s []V) Roster[V] {
+	if len(s) == 0 {
+		return Roster[V]{}
+	}
+	for i := 1; i < len(s); i++ {
+		if cmp.Compare(s[i-1], s[i]) >= 0 {
+			panic("roster.FromSorted: values not strictly ascending")
+		}
+	}
+	return Roster[V]{array: s}
 }
 
 // ----- Basic set operations

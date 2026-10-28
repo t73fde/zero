@@ -149,6 +149,64 @@ func strictlyAscending[V cmp.Ordered](a []V) bool {
 	return true
 }
 
+func TestFromSorted(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     []int
+		want      []int
+		wantPanic bool
+	}{
+		{name: "empty input",
+			input: []int{},
+			want:  []int{},
+		},
+		{name: "nil input",
+			input: nil,
+			want:  []int{},
+		},
+		{name: "single element",
+			input: []int{42},
+			want:  []int{42},
+		},
+		{name: "sorted input",
+			input: []int{1, 3, 5, 8},
+			want:  []int{1, 3, 5, 8},
+		},
+		{name: "unsorted input",
+			input:     []int{1, 5, 3},
+			wantPanic: true,
+		},
+		{name: "duplicate values",
+			input:     []int{1, 2, 2, 3},
+			wantPanic: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.wantPanic {
+				defer func() {
+					if recover() == nil {
+						t.Fatal("expected panic, got none")
+					}
+				}()
+			}
+
+			got := roster.FromSorted(tt.input)
+
+			if tt.wantPanic {
+				t.Fatal("expected panic, got none")
+			}
+			if got.Count() != len(tt.want) {
+				t.Fatalf("Len() = %d, want %d", got.Count(), len(tt.want))
+			}
+			if gotValues := slices.Collect(got.Values()); !slices.Equal(gotValues, tt.want) {
+				t.Errorf("Values() = %v, want %v", gotValues, tt.want)
+			}
+		})
+	}
+}
+
 func TestInsertDelete(t *testing.T) {
 	t.Parallel()
 	rng := rand.New(rand.NewPCG(3, 4))
